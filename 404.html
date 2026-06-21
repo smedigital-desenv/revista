@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Portfolio MAG</title>
+  <script>
+    // GitHub Pages SPA fallback: preserva o path como query e volta ao index
+    (function () {
+      var path = window.location.pathname + window.location.search + window.location.hash;
+      var base = window.location.pathname.split('/').slice(0, 2).join('/'); // /repo
+      window.location.replace((base || '') + '/?redirect=' + encodeURIComponent(path));
+    })();
+  </script>
+</head>
+<body></body>
+</html>
