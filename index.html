@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio MAG</title>
+  <meta name="description" content="Revista digital da Secretaria Municipal de Educação">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/global.css">
+</head>
+<body>
+
+  <!-- Loading splash -->
+  <div id="app-loading" class="app-screen">
+    <div class="splash">
+      <div class="splash-logo">PORTFOLIO MAG</div>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Login -->
+  <div id="app-login" class="app-screen" style="display:none">
+    <div class="login-card">
+      <div class="login-logo">PORTFOLIO MAG</div>
+      <p class="login-sub">Revista digital · Secretaria Municipal de Educação</p>
+      <button id="btn-google-login" class="btn btn-primary btn-google">
+        <span class="g-ic">G</span> Entrar com Google
+      </button>
+      <p class="login-hint">Use o e-mail cadastrado pela Secretaria.</p>
+    </div>
+  </div>
+
+  <!-- Sem acesso -->
+  <div id="app-no-access" class="app-screen" style="display:none">
+    <div class="login-card">
+      <div class="na-ic">🔒</div>
+      <h2 class="na-title">Sem acesso</h2>
+      <p id="no-access-msg" class="login-sub">Seu e-mail não está cadastrado no sistema.</p>
+      <button id="btn-no-access-logout" class="btn btn-ghost">Sair</button>
+    </div>
+  </div>
+
+  <!-- App shell -->
+  <div id="app" style="display:none">
+    <header id="topbar">
+      <div id="tb-back" class="tb-back">‹ Voltar</div>
+      <nav id="tb-breadcrumb" class="tb-breadcrumb"></nav>
+      <div id="tb-right" class="tb-right">
+        <span id="tb-user" class="tb-user"></span>
+        <div class="tb-logo">PORTFOLIO MAG</div>
+        <button id="tb-admin" class="btn btn-editor btn-sm" style="display:none">⚙ Admin</button>
+        <button id="btn-logout" class="btn btn-ghost btn-sm">Sair</button>
+      </div>
+    </header>
+    <main id="main-content"></main>
+  </div>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Módulos (ordem obrigatória) -->
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/views/secretaria.js"></script>
+  <script src="js/views/tema.js"></script>
+  <script src="js/views/revista.js"></script>
+  <script src="js/views/editor.js"></script>
+  <script src="js/views/admin.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

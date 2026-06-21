@@ -1,0 +1,20 @@
+# Dependências / build
+node_modules/
+dist/
+
+# Editores / SO
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Segredos — NUNCA commitar a service_role key do Supabase
+.env
+.env.local
+secrets.json
+
+# Claude Code — configurações locais/pessoais
+.claude/settings.local.json
