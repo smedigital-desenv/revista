@@ -60,7 +60,8 @@ const SecretariaView = (() => {
       <p class="tema-desc">${UI._esc(t.descricao || '')}</p>
       <div class="tema-meta">
         <span>🏫 ${t.total_unidades || 0}</span>
-        <span>📄 ${t.total_paginas || 0}</span>
+        <span title="Páginas publicadas pelas escolas">📄 ${t.total_paginas || 0}</span>
+        <span title="Na revista principal">★ ${t.total_principal || 0}</span>
         ${t.tag ? `<span class="tema-tag" style="color:${cor}">${UI._esc(t.tag)}</span>` : ''}
       </div>
     </div>`;

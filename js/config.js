@@ -40,7 +40,10 @@ const CONFIG = {
     '#00C896', '#FFD200', '#6366F1', '#EC4899',
   ],
 
-  STATUS_PAGINA:    { RASCUNHO: 'rascunho', REVISAO: 'revisao', PUBLICADO: 'publicado', EXCLUIDO: 'excluido' },
+  // status na revista da própria escola (a escola controla)
+  STATUS_PAGINA:    { RASCUNHO: 'rascunho', PUBLICADO: 'publicado', EXCLUIDO: 'excluido' },
+  // status em relação à revista principal (a SME valida)
+  STATUS_PRINCIPAL: { NENHUM: 'nenhum', PENDENTE: 'pendente', APROVADO: 'aprovado', RECUSADO: 'recusado' },
   STATUS_INSCRICAO: { PENDENTE: 'pendente', APROVADO: 'aprovado', RECUSADO: 'recusado' },
   STATUS_GERAL:     { ATIVO: 'ativo', INATIVO: 'inativo' },
   PERFIS:           { SECRETARIA: 'secretaria', UNIDADE: 'unidade' },

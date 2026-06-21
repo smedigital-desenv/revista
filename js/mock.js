@@ -34,7 +34,7 @@ const MockData = {
   paginas: [
     {
       id: 'p1', unidade_id: 'u1', tema_id: 't1', inscricao_id: 'i1', titulo: 'Nossa horta na merenda',
-      ordem: 1, layout: 'hero-texto-galeria', status: 'publicado',
+      ordem: 1, layout: 'hero-texto-galeria', status: 'publicado', principal_status: 'aprovado',
       conteudo: {
         tag: 'Alimentação', tagCor: '#FF6B35', titulo: 'Da horta ao prato',
         subtitulo: 'Como a horta escolar transformou a merenda',
@@ -44,7 +44,7 @@ const MockData = {
     },
     {
       id: 'p2', unidade_id: 'u1', tema_id: 't1', inscricao_id: 'i1', titulo: 'Números do projeto',
-      ordem: 2, layout: 'indicadores', status: 'publicado',
+      ordem: 2, layout: 'indicadores', status: 'publicado', principal_status: 'aprovado',
       conteudo: {
         tag: 'Resultados', tagCor: '#FF6B35', titulo: 'O impacto em números',
         subtitulo: 'Primeiro semestre de 2026',
@@ -59,7 +59,7 @@ const MockData = {
     },
     {
       id: 'p3', unidade_id: 'u2', tema_id: 't1', inscricao_id: 'i2', titulo: 'Cozinha experimental',
-      ordem: 1, layout: 'citacao-galeria', status: 'publicado',
+      ordem: 1, layout: 'citacao-galeria', status: 'publicado', principal_status: 'pendente',
       conteudo: {
         tag: 'Alimentação', tagCor: '#00E5FF', titulo: 'Sabores da infância',
         subtitulo: 'Oficinas culinárias com as famílias',
@@ -71,7 +71,7 @@ const MockData = {
     },
     {
       id: 'p4', unidade_id: 'u3', tema_id: 't2', inscricao_id: 'i3', titulo: 'Clube do livro',
-      ordem: 1, layout: 'timeline', status: 'publicado',
+      ordem: 1, layout: 'timeline', status: 'publicado', principal_status: 'aprovado',
       conteudo: {
         tag: 'Leitura', tagCor: '#FFD200', titulo: 'Um ano de leituras',
         subtitulo: 'A trajetória do clube do livro',
@@ -84,7 +84,7 @@ const MockData = {
     },
     {
       id: 'p5', unidade_id: 'u3', tema_id: 't2', inscricao_id: 'i3', titulo: 'Galeria do sarau',
-      ordem: 2, layout: 'galeria-completa', status: 'revisao',
+      ordem: 2, layout: 'galeria-completa', status: 'publicado', principal_status: 'nenhum',
       conteudo: {
         titulo: 'Momentos do sarau', tagCor: '#FFD200',
         galeria: ['https://picsum.photos/seed/sarau1/600/400', 'https://picsum.photos/seed/sarau2/600/400', 'https://picsum.photos/seed/sarau3/600/400', 'https://picsum.photos/seed/sarau4/600/400'],
@@ -103,8 +103,12 @@ const MockApi = (() => {
 
   function _temaCounts(temaId) {
     const pubs = MockData.paginas.filter((p) => p.tema_id === temaId && p.status === 'publicado');
-    const unidadesComPub = new Set(pubs.map((p) => p.unidade_id));
-    return { total_unidades: unidadesComPub.size, total_paginas: pubs.length };
+    const naPrincipal = pubs.filter((p) => p.principal_status === 'aprovado');
+    return {
+      total_unidades: new Set(pubs.map((p) => p.unidade_id)).size,
+      total_paginas: pubs.length,
+      total_principal: naPrincipal.length,
+    };
   }
 
   const secretaria = {
@@ -125,7 +129,15 @@ const MockApi = (() => {
         if (!u) return null;
         const pubs = MockData.paginas.filter((p) => p.unidade_id === u.id && p.tema_id === id && p.status === 'publicado')
           .sort((a, b) => a.ordem - b.ordem);
-        return { ...clone(u), total_pags: pubs.length, capa: pubs[0] ? { titulo: pubs[0].titulo, layout: pubs[0].layout } : null };
+        const principais = pubs.filter((p) => p.principal_status === 'aprovado');
+        return {
+          ...clone(u),
+          total_pags: pubs.length,
+          total_principal: principais.length,
+          na_principal: principais.length > 0,
+          capa: pubs[0] ? { titulo: pubs[0].titulo, layout: pubs[0].layout } : null,
+          capa_principal: principais[0] ? { titulo: principais[0].titulo, layout: principais[0].layout } : null,
+        };
       }).filter((u) => u && u.total_pags > 0);
       return { tema: clone(t), unidades };
     },
@@ -160,9 +172,12 @@ const MockApi = (() => {
   };
 
   const paginas = {
-    getRevista: async (unidadeId, temaId) => ({
+    // scope: 'escola' (tudo publicado) | 'principal' (só aprovado na revista principal)
+    getRevista: async (unidadeId, temaId, scope = 'escola') => ({
       unidade: clone(unidade(unidadeId)),
-      paginas: MockData.paginas.filter((p) => p.unidade_id === unidadeId && p.tema_id === temaId && p.status === 'publicado')
+      paginas: MockData.paginas
+        .filter((p) => p.unidade_id === unidadeId && p.tema_id === temaId && p.status === 'publicado'
+          && (scope !== 'principal' || p.principal_status === 'aprovado'))
         .sort((a, b) => a.ordem - b.ordem).map(clone),
     }),
     getModoEdicao: async (unidadeId, temaId) => ({
@@ -173,13 +188,29 @@ const MockApi = (() => {
     salvar: async (payload) => {
       let p = payload.id ? MockData.paginas.find((x) => x.id === payload.id) : null;
       if (p) { Object.assign(p, payload); }
-      else { p = { ...payload, id: _id('p'), status: payload.status || 'rascunho' }; MockData.paginas.push(p); }
-      return { id: p.id, status: p.status };
+      else { p = { ...payload, id: _id('p'), status: payload.status || 'rascunho', principal_status: 'nenhum' }; MockData.paginas.push(p); }
+      return { id: p.id, status: p.status, principal_status: p.principal_status };
     },
+    // status na revista da própria escola (rascunho/publicado/excluido)
     setStatus: async (id, status) => {
       const p = MockData.paginas.find((x) => x.id === id);
       p.status = status;
+      // ao despublicar/excluir, sai também da principal
+      if (status !== 'publicado') p.principal_status = 'nenhum';
       return { id: p.id, status, unidade_id: p.unidade_id, tema_id: p.tema_id };
+    },
+    // escola envia a página (já publicada) para avaliação da revista principal
+    enviarParaPrincipal: async (id) => {
+      const p = MockData.paginas.find((x) => x.id === id);
+      if (p.status !== 'publicado') throw new Error('Publique a página antes de enviar à revista principal.');
+      p.principal_status = 'pendente';
+      return { id: p.id, principal_status: p.principal_status };
+    },
+    // SME aprova/recusa a entrada na revista principal
+    setPrincipalStatus: async (id, principal_status) => {
+      const p = MockData.paginas.find((x) => x.id === id);
+      p.principal_status = principal_status;
+      return { id: p.id, principal_status, unidade_id: p.unidade_id, tema_id: p.tema_id };
     },
     reordenar: async (_u, _t, ordemArray) => {
       ordemArray.forEach(({ id, ordem }) => { const p = MockData.paginas.find((x) => x.id === id); if (p) p.ordem = ordem; });
@@ -205,7 +236,8 @@ const MockApi = (() => {
         total_unidades: MockData.unidades.filter((u) => u.status === 'ativo').length,
         total_temas: MockData.temas.filter((t) => t.status === 'ativo').length,
         total_publicadas: pgs.filter((p) => p.status === 'publicado').length,
-        total_em_revisao: pgs.filter((p) => p.status === 'revisao').length,
+        total_na_principal: pgs.filter((p) => p.principal_status === 'aprovado').length,
+        total_principal_pend: pgs.filter((p) => p.status === 'publicado' && p.principal_status === 'pendente').length,
         total_rascunhos: pgs.filter((p) => p.status === 'rascunho').length,
         total_inscr_pend: MockData.inscricoes.filter((i) => i.status === 'pendente').length,
         total_usuarios: 1,
@@ -213,11 +245,11 @@ const MockApi = (() => {
       const inscricoes_pendentes = MockData.inscricoes.filter((i) => i.status === 'pendente').map((i) => ({
         id: i.id, inscrito_em: '', unidade_nome: unidade(i.unidade_id)?.nome || '—', tema_nome: tema(i.tema_id)?.nome || '—',
       }));
-      const paginas_revisao = pgs.filter((p) => p.status === 'revisao').map((p) => ({
+      const paginas_principal = pgs.filter((p) => p.status === 'publicado' && p.principal_status === 'pendente').map((p) => ({
         id: p.id, titulo: p.titulo, atualizado_em: '',
         unidade_nome: unidade(p.unidade_id)?.nome || '—', tema_nome: tema(p.tema_id)?.nome || '—',
       }));
-      return { stats, inscricoes_pendentes, paginas_revisao };
+      return { stats, inscricoes_pendentes, paginas_principal };
     },
   };
 

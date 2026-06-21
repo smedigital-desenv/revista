@@ -60,7 +60,7 @@ const Api = (() => {
       const tema = _check(temaRes);
 
       const inscRes = await _sb().from('inscricoes')
-        .select('unidade_id, unidades ( id, nome, sigla, cidade, cor ), paginas ( id, titulo, layout, ordem, status )')
+        .select('unidade_id, unidades ( id, nome, sigla, cidade, cor ), paginas ( id, titulo, layout, ordem, status, principal_status )')
         .eq('tema_id', id)
         .eq('status', 'aprovado');
       const inscricoes = _check(inscRes) || [];
@@ -72,10 +72,14 @@ const Api = (() => {
           const pubs = (i.paginas || [])
             .filter((p) => p.status === 'publicado')
             .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+          const principais = pubs.filter((p) => p.principal_status === 'aprovado');
           return {
             ...u,
             total_pags: pubs.length,
+            total_principal: principais.length,
+            na_principal: principais.length > 0,
             capa: pubs[0] ? { titulo: pubs[0].titulo, layout: pubs[0].layout } : null,
+            capa_principal: principais[0] ? { titulo: principais[0].titulo, layout: principais[0].layout } : null,
           };
         })
         .filter((u) => u && u.total_pags > 0);
@@ -146,16 +150,20 @@ const Api = (() => {
 
   // ── Páginas ─────────────────────────────────────────────
   const paginas = {
-    getRevista: async (unidadeId, temaId) => {
-      const key = `revista_${unidadeId}_${temaId}`;
+    // scope: 'escola' (tudo publicado) | 'principal' (só aprovado na revista principal)
+    getRevista: async (unidadeId, temaId, scope = 'escola') => {
+      const key = `revista_${scope}_${unidadeId}_${temaId}`;
       const cached = Store.cacheGet(key);
       if (cached) return cached;
 
+      let q = _sb().from('paginas').select('*')
+        .eq('unidade_id', unidadeId).eq('tema_id', temaId)
+        .eq('status', 'publicado');
+      if (scope === 'principal') q = q.eq('principal_status', 'aprovado');
+
       const [unidadeRes, paginasRes] = await Promise.all([
         _sb().from('unidades').select('id, nome, sigla, cidade, cor, storage_path').eq('id', unidadeId).single(),
-        _sb().from('paginas').select('*')
-          .eq('unidade_id', unidadeId).eq('tema_id', temaId)
-          .eq('status', 'publicado').order('ordem'),
+        q.order('ordem'),
       ]);
 
       const result = { unidade: _check(unidadeRes), paginas: _check(paginasRes) || [] };
@@ -173,6 +181,10 @@ const Api = (() => {
       return { unidade: _check(unidadeRes), paginas: _check(paginasRes) || [] };
     },
 
+    _invalidate: (unidadeId, temaId) => Store.cacheInvalidate(
+      'admin_dashboard', 'secretaria_data', 'tema_' + temaId,
+      `revista_escola_${unidadeId}_${temaId}`, `revista_principal_${unidadeId}_${temaId}`),
+
     salvar: async (payload) => {
       const row = {
         ...payload,
@@ -180,19 +192,42 @@ const Api = (() => {
         atualizado_por: _uid(),
       };
       if (!row.id) delete row.id; // insert
-      const data = _check(await _sb().from('paginas').upsert(row).select('id, status').single());
-      Store.cacheInvalidate(`revista_${payload.unidade_id}_${payload.tema_id}`);
+      const data = _check(await _sb().from('paginas').upsert(row).select('id, status, principal_status').single());
+      paginas._invalidate(payload.unidade_id, payload.tema_id);
       EventBus.emit('pagina:salva', { id: data.id, status: data.status });
       return data;
     },
 
+    // status na revista da própria escola (rascunho/publicado/excluido)
     setStatus: async (id, status) => {
-      const data = _check(await _sb().from('paginas')
-        .update({ status, atualizado_em: new Date().toISOString(), atualizado_por: _uid() })
+      const patch = { status, atualizado_em: new Date().toISOString(), atualizado_por: _uid() };
+      if (status !== 'publicado') patch.principal_status = 'nenhum'; // sai da principal
+      const data = _check(await _sb().from('paginas').update(patch)
         .eq('id', id).select('id, status, unidade_id, tema_id').single());
-      Store.cacheInvalidate('admin_dashboard', `revista_${data.unidade_id}_${data.tema_id}`,
-        'tema_' + data.tema_id, 'secretaria_data');
+      paginas._invalidate(data.unidade_id, data.tema_id);
       EventBus.emit('pagina:status', { id, novoStatus: status });
+      return data;
+    },
+
+    // escola envia página (publicada) para avaliação da revista principal
+    enviarParaPrincipal: async (id) => {
+      const data = _check(await _sb().from('paginas')
+        .update({ principal_status: 'pendente' })
+        .eq('id', id).eq('status', 'publicado')
+        .select('id, principal_status, unidade_id, tema_id').single());
+      paginas._invalidate(data.unidade_id, data.tema_id);
+      EventBus.emit('pagina:status', { id, novoStatus: 'principal:pendente' });
+      return data;
+    },
+
+    // SME aprova/recusa a entrada na revista principal
+    setPrincipalStatus: async (id, principalStatus) => {
+      const patch = { principal_status: principalStatus };
+      if (principalStatus === 'aprovado') { patch.principal_aprovado_em = new Date().toISOString(); patch.principal_aprovado_por = _uid(); }
+      const data = _check(await _sb().from('paginas').update(patch)
+        .eq('id', id).select('id, principal_status, unidade_id, tema_id').single());
+      paginas._invalidate(data.unidade_id, data.tema_id);
+      EventBus.emit('pagina:status', { id, novoStatus: 'principal:' + principalStatus });
       return data;
     },
 
@@ -236,7 +271,7 @@ const Api = (() => {
       const [unidadesRes, temasRes, paginasRes, inscricoesRes, usuariosRes] = await Promise.all([
         _sb().from('unidades').select('id', { count: 'exact', head: true }).eq('status', 'ativo'),
         _sb().from('temas').select('id', { count: 'exact', head: true }).eq('status', 'ativo'),
-        _sb().from('paginas').select('status'),
+        _sb().from('paginas').select('status, principal_status'),
         _sb().from('inscricoes').select('status'),
         _sb().from('usuarios').select('id', { count: 'exact', head: true }).eq('ativo', true),
       ]);
@@ -245,34 +280,35 @@ const Api = (() => {
       const inscr = _check(inscricoesRes) || [];
 
       const stats = {
-        total_unidades:   unidadesRes.count || 0,
-        total_temas:      temasRes.count || 0,
-        total_publicadas: pgs.filter((p) => p.status === 'publicado').length,
-        total_em_revisao: pgs.filter((p) => p.status === 'revisao').length,
-        total_rascunhos:  pgs.filter((p) => p.status === 'rascunho').length,
-        total_inscr_pend: inscr.filter((i) => i.status === 'pendente').length,
-        total_usuarios:   usuariosRes.count || 0,
+        total_unidades:       unidadesRes.count || 0,
+        total_temas:          temasRes.count || 0,
+        total_publicadas:     pgs.filter((p) => p.status === 'publicado').length,
+        total_na_principal:   pgs.filter((p) => p.principal_status === 'aprovado').length,
+        total_principal_pend: pgs.filter((p) => p.status === 'publicado' && p.principal_status === 'pendente').length,
+        total_rascunhos:      pgs.filter((p) => p.status === 'rascunho').length,
+        total_inscr_pend:     inscr.filter((i) => i.status === 'pendente').length,
+        total_usuarios:       usuariosRes.count || 0,
       };
 
-      const [pendRes, revRes] = await Promise.all([
+      const [pendRes, principalRes] = await Promise.all([
         _sb().from('inscricoes')
           .select('id, inscrito_em, unidades ( nome ), temas ( nome )')
           .eq('status', 'pendente').order('inscrito_em'),
         _sb().from('paginas')
           .select('id, titulo, atualizado_em, unidades ( nome ), temas ( nome )')
-          .eq('status', 'revisao').order('atualizado_em'),
+          .eq('status', 'publicado').eq('principal_status', 'pendente').order('atualizado_em'),
       ]);
 
       const inscricoes_pendentes = (_check(pendRes) || []).map((i) => ({
         id: i.id, inscrito_em: i.inscrito_em,
         unidade_nome: i.unidades?.nome || '—', tema_nome: i.temas?.nome || '—',
       }));
-      const paginas_revisao = (_check(revRes) || []).map((p) => ({
+      const paginas_principal = (_check(principalRes) || []).map((p) => ({
         id: p.id, titulo: p.titulo, atualizado_em: p.atualizado_em,
         unidade_nome: p.unidades?.nome || '—', tema_nome: p.temas?.nome || '—',
       }));
 
-      const result = { stats, inscricoes_pendentes, paginas_revisao };
+      const result = { stats, inscricoes_pendentes, paginas_principal };
       Store.cacheSet('admin_dashboard', result, CONFIG.CACHE_TTL.DASHBOARD);
       return result;
     },

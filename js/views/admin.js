@@ -6,7 +6,7 @@ const AdminView = (() => {
   async function render(container) {
     if (!Store.isSecretaria()) { Router.navigate('secretaria', {}, false); return; }
 
-    const { stats, inscricoes_pendentes, paginas_revisao } = await Api.admin.getDashboard();
+    const { stats, inscricoes_pendentes, paginas_principal } = await Api.admin.getDashboard();
 
     container.innerHTML = `
     <div id="view-admin" class="view-pad">
@@ -21,9 +21,9 @@ const AdminView = (() => {
       <div class="stats-grid">
         ${UI.statCard(stats.total_unidades, 'Unidades', 'var(--c1)')}
         ${UI.statCard(stats.total_temas, 'Temas', 'var(--c2)')}
-        ${UI.statCard(stats.total_publicadas, 'Publicadas', 'var(--c6)')}
-        ${UI.statCard(stats.total_em_revisao, 'Em revisão', 'var(--c3)')}
-        ${UI.statCard(stats.total_rascunhos, 'Rascunhos', 'var(--muted)')}
+        ${UI.statCard(stats.total_publicadas, 'Publicadas (escolas)', 'var(--c6)')}
+        ${UI.statCard(stats.total_na_principal, 'Na revista principal', 'var(--c4)')}
+        ${UI.statCard(stats.total_principal_pend, 'Aguardando aprovação', 'var(--c3)')}
         ${UI.statCard(stats.total_inscr_pend, 'Inscrições pendentes', 'var(--c5)')}
       </div>
 
@@ -42,13 +42,13 @@ const AdminView = (() => {
 
         <div class="admin-panel card">
           <div class="admin-panel-head">
-            <span>Aguardando revisão</span>
-            <span class="admin-count">${paginas_revisao.length}</span>
+            <span>Aprovar para a revista principal</span>
+            <span class="admin-count">${paginas_principal.length}</span>
           </div>
           <div class="admin-panel-body">
-            ${paginas_revisao.length
-              ? paginas_revisao.map(_revRow).join('')
-              : `<div class="empty-state-sm">Nenhuma página em revisão.</div>`}
+            ${paginas_principal.length
+              ? paginas_principal.map(_principalRow).join('')
+              : `<div class="empty-state-sm">Nenhuma página aguardando aprovação.</div>`}
           </div>
         </div>
       </div>
@@ -68,14 +68,15 @@ const AdminView = (() => {
     </div>`;
   }
 
-  function _revRow(p) {
+  function _principalRow(p) {
     return `<div class="admin-item">
       <div class="admin-item-info">
         <div class="admin-item-t">${UI._esc(p.titulo)}</div>
         <div class="admin-item-s">${UI._esc(p.unidade_nome)} · ${UI._esc(p.tema_nome)}</div>
       </div>
       <div class="admin-item-actions">
-        ${UI.btn('Publicar', { type: 'primary', size: 'sm', onclick: `AdminView.publicar('${p.id}')` })}
+        <button class="icon-btn icon-no" title="Recusar" onclick="AdminView.recusarPrincipal('${p.id}')">✗</button>
+        ${UI.btn('Aprovar', { type: 'editor', size: 'sm', onclick: `AdminView.aprovarPrincipal('${p.id}')` })}
       </div>
     </div>`;
   }
@@ -100,16 +101,27 @@ const AdminView = (() => {
     });
   }
 
-  async function publicar(paginaId) {
+  async function aprovarPrincipal(paginaId) {
     try {
-      await Api.paginas.setStatus(paginaId, 'publicado');
-      UI.toast('Página publicada!', 'success');
+      await Api.paginas.setPrincipalStatus(paginaId, 'aprovado');
+      UI.toast('Página aprovada na revista principal!', 'success');
       Store.cacheInvalidate('admin_dashboard');
       render(document.getElementById('main-content'));
     } catch (err) { UI.toast(err.message, 'error'); }
   }
 
+  function recusarPrincipal(paginaId) {
+    UI.confirm('Recusar esta página na revista principal?', async () => {
+      try {
+        await Api.paginas.setPrincipalStatus(paginaId, 'recusado');
+        UI.toast('Página recusada.', 'info');
+        Store.cacheInvalidate('admin_dashboard');
+        render(document.getElementById('main-content'));
+      } catch (err) { UI.toast(err.message, 'error'); }
+    });
+  }
+
   function notificar() { UI.toast('Notificações por e-mail: em breve.', 'info'); }
 
-  return { render, aprovarInscricao, recusarInscricao, publicar, notificar };
+  return { render, aprovarInscricao, recusarInscricao, aprovarPrincipal, recusarPrincipal, notificar };
 })();

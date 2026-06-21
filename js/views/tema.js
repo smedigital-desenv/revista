@@ -10,6 +10,8 @@ const TemaView = (() => {
     const cor = tema.cor || '#FF6B35';
 
     const totalPaginas = unidades.reduce((s, u) => s + (u.total_pags || 0), 0);
+    const totalPrincipal = unidades.reduce((s, u) => s + (u.total_principal || 0), 0);
+    const destaques = unidades.filter((u) => u.na_principal);
 
     // botão de ação por perfil
     let acaoBtn = '';
@@ -35,23 +37,24 @@ const TemaView = (() => {
         <div class="tema-hero-stats">
           <span><b>${unidades.length}</b> unidades</span>
           <span><b>${totalPaginas}</b> páginas</span>
+          <span><b>${totalPrincipal}</b> na principal</span>
         </div>
       </section>
 
       <section class="carrossel-section">
-        ${UI.sectionLabel('📖', 'Publicações em destaque')}
-        ${unidades.length ? `
+        ${UI.sectionLabel('★', 'Em destaque na revista principal')}
+        ${destaques.length ? `
           <div class="carrossel-wrap">
             <button class="carr-btn carr-prev" onclick="TemaView.scrollCarr(-1)">‹</button>
             <div id="carrossel" class="carrossel">
-              ${unidades.map((u) => _pubCard(u, cor)).join('')}
+              ${destaques.map((u) => _pubCard(u, cor)).join('')}
             </div>
             <button class="carr-btn carr-next" onclick="TemaView.scrollCarr(1)">›</button>
-          </div>` : `<div class="empty-state">Nenhuma publicação ainda neste tema.</div>`}
+          </div>` : `<div class="empty-state">Nenhuma publicação aprovada na revista principal ainda.</div>`}
       </section>
 
       <section class="unidades-section">
-        ${UI.sectionLabel('🏫', 'Unidades participantes')}
+        ${UI.sectionLabel('🏫', 'Revistas das escolas')}
         <div class="unidades-list">
           ${unidades.map((u) => _unidadeRow(u)).join('')}
         </div>
@@ -60,22 +63,22 @@ const TemaView = (() => {
     </div>`;
   }
 
-  function _navParams(u) {
+  function _navParams(u, scope) {
     return encodeURIComponent(JSON.stringify({
       temaId: _ctx.temaId, temaNome: _ctx.temaNome,
-      unidadeId: u.id, unidadeNome: u.nome,
+      unidadeId: u.id, unidadeNome: u.nome, scope: scope || 'escola',
     }));
   }
 
   function _pubCard(u, cor) {
     const ucor = u.cor || cor;
-    return `<div class="pub-card" onclick="Router.navigate('revista', JSON.parse(decodeURIComponent('${_navParams(u)}')))">
+    return `<div class="pub-card" onclick="Router.navigate('revista', JSON.parse(decodeURIComponent('${_navParams(u, 'principal')}')))">
       <div class="pub-card-cover" style="background:linear-gradient(135deg,${ucor},${ucor}99)">
         <span class="pub-card-sigla">${UI._esc(u.sigla)}</span>
       </div>
       <div class="pub-card-body">
         <div class="pub-card-nome">${UI._esc(u.nome)}</div>
-        <div class="pub-card-meta">${u.total_pags} pág.</div>
+        <div class="pub-card-meta">★ ${u.total_principal} na principal</div>
       </div>
     </div>`;
   }
@@ -86,7 +89,7 @@ const TemaView = (() => {
     const thumbs = Array.from({ length: Math.min(n, 4) }).map((_, i) =>
       `<span class="ur-thumb" style="border-color:${cor};color:${cor}">${i + 1}</span>`).join('') +
       (n > 4 ? `<span class="ur-thumb ur-thumb-more">+${n - 4}</span>` : '');
-    return `<div class="unidade-row" onclick="Router.navigate('revista', JSON.parse(decodeURIComponent('${_navParams(u)}')))">
+    return `<div class="unidade-row" onclick="Router.navigate('revista', JSON.parse(decodeURIComponent('${_navParams(u, 'escola')}')))">
       <div class="ur-avatar" style="background:${cor}">${UI._esc(u.sigla)}</div>
       <div class="ur-info">
         <div class="ur-nome">${UI._esc(u.nome)}</div>

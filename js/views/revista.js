@@ -6,13 +6,15 @@ const RevistaView = (() => {
 
   async function render(container, params) {
     _state.params = params || {};
-    const { unidade, paginas } = await Api.paginas.getRevista(params.unidadeId, params.temaId);
+    const scope = params.scope === 'principal' ? 'principal' : 'escola';
+    const { unidade, paginas } = await Api.paginas.getRevista(params.unidadeId, params.temaId, scope);
     _state.unidade = unidade;
     _state.pages = paginas;
     _state.current = 0;
 
     const cor = unidade.cor || '#FF3366';
     const podeEditar = Store.isOwnerOf(unidade.id);
+    const scopeLabel = scope === 'principal' ? '★ Revista principal' : 'Revista da escola';
 
     const editarBtn = podeEditar
       ? UI.btn('✏ Editar', { type: 'editor', size: 'sm',
@@ -24,7 +26,7 @@ const RevistaView = (() => {
         <div class="rev-avatar" style="background:${cor}">${UI._esc(unidade.sigla)}</div>
         <div class="rev-unit-info">
           <div class="rev-unit-nome">${UI._esc(unidade.nome)}</div>
-          <div class="rev-unit-tema">${UI._esc(params.temaNome || '')} · ${UI._esc(unidade.cidade || '')}</div>
+          <div class="rev-unit-tema">${UI._esc(scopeLabel)} · ${UI._esc(params.temaNome || '')}</div>
         </div>
         <div class="rev-unit-actions">
           ${editarBtn}

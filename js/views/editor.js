@@ -58,8 +58,8 @@ const EditorView = (() => {
             · <span id="ed-page-count">Página ${_s.current + 1}/${_s.pages.length}</span>
           </div>
           <div class="ed-canvas-actions">
-            ${UI.btn('Enviar p/ revisão', { type: 'outline', size: 'sm', onclick: 'EditorView.sendToReview()' })}
-            ${Store.isSecretaria() ? UI.btn('Publicar', { type: 'primary', size: 'sm', onclick: 'EditorView.publish()' }) : ''}
+            ${UI.btn('Publicar na minha revista', { type: 'primary', size: 'sm', onclick: 'EditorView.publish()' })}
+            ${UI.btn('Enviar p/ revista principal', { type: 'editor', size: 'sm', onclick: 'EditorView.enviarPrincipal()' })}
           </div>
         </div>
         <div class="ed-canvas">
@@ -105,7 +105,7 @@ const EditorView = (() => {
   function _novaPagina() {
     return {
       id: null, unidade_id: _s.params.unidadeId, tema_id: _s.params.temaId,
-      titulo: 'Nova página', layout: 'hero-texto-galeria', status: 'rascunho',
+      titulo: 'Nova página', layout: 'hero-texto-galeria', status: 'rascunho', principal_status: 'nenhum',
       conteudo: { tagCor: '#FF3366' }, inscricao_id: null,
       ordem: (_s.pages?.length || 0) + 1,
     };
@@ -165,9 +165,21 @@ const EditorView = (() => {
   }
 
   function _badgeType(status) {
-    return status === 'publicado' ? 'published' : status === 'revisao' ? 'review' : 'draft';
+    return status === 'publicado' ? 'published' : 'draft';
   }
-  function _statusBadge() { return UI.badge('', _badgeType(_cur().status)); }
+  const _PRINCIPAL_LABEL = {
+    nenhum: '', pendente: '⏳ Principal: aguardando', aprovado: '★ Na revista principal', recusado: '✗ Principal: recusada',
+  };
+  function _principalBadge() {
+    const ps = _cur().principal_status || 'nenhum';
+    if (ps === 'nenhum') return '';
+    const type = ps === 'aprovado' ? 'published' : ps === 'pendente' ? 'review' : 'draft';
+    return ' ' + UI.badge(_PRINCIPAL_LABEL[ps], type);
+  }
+  function _statusBadge() {
+    const own = UI.badge(_cur().status === 'publicado' ? 'Publicado na escola' : 'Rascunho', _badgeType(_cur().status));
+    return own + _principalBadge();
+  }
 
   function _renderDots() {
     return _s.pages.map((_, i) =>
@@ -286,28 +298,38 @@ const EditorView = (() => {
     }
   }
 
-  async function sendToReview() {
-    const p = _cur();
-    if (!p.id) { UI.toast('Salve a página primeiro.', 'error'); return; }
-    try {
-      await Api.paginas.setStatus(p.id, 'revisao');
-      p.status = 'revisao';
-      UI.toast('Enviado para revisão!', 'success');
-      document.getElementById('ed-status-badge').innerHTML = _statusBadge();
-      document.getElementById('ed-pages-list').innerHTML = _renderPagesList();
-    } catch (err) { UI.toast(err.message, 'error'); }
-  }
-
+  // A escola publica na própria revista (sem aprovação da SME)
   async function publish() {
     const p = _cur();
     if (!p.id) { UI.toast('Salve a página primeiro.', 'error'); return; }
     try {
       await Api.paginas.setStatus(p.id, 'publicado');
       p.status = 'publicado';
-      UI.toast('Publicado!', 'success');
-      document.getElementById('ed-status-badge').innerHTML = _statusBadge();
-      document.getElementById('ed-pages-list').innerHTML = _renderPagesList();
+      UI.toast('Publicado na revista da escola!', 'success');
+      _refreshStatus();
     } catch (err) { UI.toast(err.message, 'error'); }
+  }
+
+  // A escola envia a página (já publicada) para a SME avaliar na revista principal
+  async function enviarPrincipal() {
+    const p = _cur();
+    if (!p.id) { UI.toast('Salve a página primeiro.', 'error'); return; }
+    if (p.status !== 'publicado') { UI.toast('Publique na sua revista antes de enviar à principal.', 'error'); return; }
+    if (p.principal_status === 'aprovado') { UI.toast('Esta página já está na revista principal.', 'info'); return; }
+    if (p.principal_status === 'pendente') { UI.toast('Já enviada — aguardando aprovação da SME.', 'info'); return; }
+    try {
+      await Api.paginas.enviarParaPrincipal(p.id);
+      p.principal_status = 'pendente';
+      UI.toast('Enviado! Aguarde a aprovação da SME.', 'success');
+      _refreshStatus();
+    } catch (err) { UI.toast(err.message, 'error'); }
+  }
+
+  function _refreshStatus() {
+    const sb = document.getElementById('ed-status-badge');
+    if (sb) sb.innerHTML = _statusBadge();
+    const list = document.getElementById('ed-pages-list');
+    if (list) list.innerHTML = _renderPagesList();
   }
 
   function deletePage() {
@@ -368,6 +390,6 @@ const EditorView = (() => {
   return {
     render, onField, onTitleChange, setLayout, setColor,
     addPage, goToPage, prevPage, nextPage,
-    save, sendToReview, publish, deletePage, preview, openDrive, doUpload,
+    save, publish, enviarPrincipal, deletePage, preview, openDrive, doUpload,
   };
 })();
