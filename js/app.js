@@ -40,6 +40,21 @@
   Router.register('admin',      AdminView);
 
   try {
+    // ── MODO DEMONSTRAÇÃO ──────────────────────────────────
+    // Sem login: entra como Secretaria (vê tudo) usando dados de exemplo.
+    if (CONFIG.DEMO_MODE) {
+      const config = await Api.config.getAll();
+      Store.init({ id: 'demo', email: 'demo@portfolio.mag', nome: 'Modo Demonstração',
+        perfil: 'secretaria', unidade_id: null }, config);
+      $('tb-user').textContent = 'Demonstração';
+      $('tb-admin').style.display = 'inline-flex';
+      hide('app-loading'); hide('app-login'); hide('app-no-access');
+      show('app', 'block');
+      UI.toast('Modo demonstração — dados de exemplo, sem banco.', 'info');
+      Router.navigate('secretaria', {}, false);
+      return;
+    }
+
     // 1-2. processa callback OAuth e pega sessão
     await SupabaseClient.handleAuthCallback();
     const session = await SupabaseClient.auth.getSession();

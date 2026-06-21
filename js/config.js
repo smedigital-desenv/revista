@@ -7,6 +7,10 @@ const CONFIG = {
   SUPABASE_URL:      'https://xxxxxxxxxxx.supabase.co',
   SUPABASE_ANON_KEY: 'COLE_SUA_ANON_KEY_AQUI',
 
+  // MODO DEMONSTRAÇÃO — sem login, dados de exemplo na memória (js/mock.js).
+  // Coloque false depois de criar o banco no Supabase e preencher as credenciais acima.
+  DEMO_MODE: true,
+
   APP_TITLE:   'Portfolio MAG',
   APP_VERSION: '1.0.0',
 

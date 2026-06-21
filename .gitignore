@@ -18,3 +18,4 @@ secrets.json
 
 # Claude Code — configurações locais/pessoais
 .claude/settings.local.json
+.claude/launch.json

@@ -293,5 +293,9 @@ const Api = (() => {
     },
   };
 
-  return { secretaria, temas, unidades, inscricoes, paginas, storage, admin, config };
+  const real = { secretaria, temas, unidades, inscricoes, paginas, storage, admin, config };
+
+  // Em modo demonstração, delega tudo para a API de mock (sem Supabase).
+  return (typeof CONFIG !== 'undefined' && CONFIG.DEMO_MODE && typeof MockApi !== 'undefined')
+    ? MockApi : real;
 })();

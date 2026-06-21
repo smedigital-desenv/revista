@@ -3,12 +3,14 @@
    Depende de: config.js e do SDK supabase-js carregado via CDN.
    ============================================================ */
 const SupabaseClient = (() => {
-  // Cliente único (singleton)
-  const client = window.supabase.createClient(
-    CONFIG.SUPABASE_URL,
-    CONFIG.SUPABASE_ANON_KEY,
-    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-  );
+  // Cliente único (singleton). Em modo demo (ou sem SDK) fica null e não é usado.
+  const client = (!CONFIG.DEMO_MODE && window.supabase)
+    ? window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY,
+        { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+      )
+    : null;
 
   const auth = {
     // Inicia OAuth Google — redireciona para o Google e volta para esta página
