@@ -19,3 +19,9 @@ secrets.json
 # Claude Code — configurações locais/pessoais
 .claude/settings.local.json
 .claude/launch.json
+
+# Dados/dumps NÃO vão ao repositório (evita vazamento de dados pessoais).
+# Rode seeds/migrações direto no Supabase. Para versionar schema anonimizado: git add -f arquivo.sql
+*.sql
+*.csv
+*.dump
