@@ -59,6 +59,10 @@ SUPABASE_ANON_KEY: 'sua anon key (Settings → API)',
 2. Em **Settings → Pages**, selecione *Source: GitHub Actions*.
 3. Cada push na branch `main` publica automaticamente via `.github/workflows/deploy.yml`.
 
+> **Ao mexer em `css/` ou `js/`, suba o `?v=` das tags do `index.html`** (e o
+> `CONFIG.APP_VERSION`, que existe só para lembrar da versão em uso). Sem isso o
+> navegador serve o arquivo antigo do cache e o deploy parece não ter mudado nada.
+
 ---
 
 ## Desenvolvimento local
