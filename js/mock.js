@@ -54,7 +54,7 @@ const MockData = {
           { icone: '🍽', valor: '4.500', label: 'Refeições no semestre', variacao: '+9%' },
         ],
         citacao: 'A comida ficou mais gostosa e as crianças querem repetir.',
-        citacaoAutor: 'Dona Marli, merendeira',
+        citacaoAutor: 'Merendeira da escola',
       },
     },
     {
@@ -64,7 +64,7 @@ const MockData = {
         tag: 'Alimentação', tagCor: '#2E5FA3', titulo: 'Sabores da infância',
         subtitulo: 'Oficinas culinárias com as famílias',
         citacao: 'Cozinhar junto é também aprender a cuidar.',
-        citacaoAutor: 'Profª Ana',
+        citacaoAutor: 'Professora dos Anos Iniciais',
         galeria: ['https://picsum.photos/seed/coz1/600/400', 'https://picsum.photos/seed/coz2/600/400'],
         texto: 'As oficinas reuniram pais, alunos e professores em torno de receitas afetivas.',
       },
