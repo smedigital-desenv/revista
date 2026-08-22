@@ -9,16 +9,21 @@ const Renderer = (() => {
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // Marinho da identidade (Mural de Praticas). A cor do tema entra como acento,
+  // nao como fundo inteiro — senao cada pagina vira de uma familia visual.
+  const NAVY = '#1B3A6B';
+
   // ── Helpers compartilhados ──────────────────────────────
   function _hero(c, height = 220) {
-    const cor = c.tagCor || '#FF3366';
+    const cor = c.tagCor || NAVY;
     const bg = c.heroBg
-      ? `background:linear-gradient(135deg, rgba(0,0,0,.45), rgba(0,0,0,.15)), url('${_esc(c.heroBg)}') center/cover`
-      : `background:linear-gradient(135deg, ${cor}, ${cor}99)`;
+      ? `background:linear-gradient(180deg, rgba(20,41,75,.25), rgba(20,41,75,.88)), url('${_esc(c.heroBg)}') center/cover`
+      : `background:linear-gradient(140deg, ${NAVY} 0%, #24487F 58%, ${cor} 190%)`;
     return `<div class="rp-hero" style="${bg};min-height:${height}px">
       ${c.tag ? `<span class="rp-tag" style="background:${cor}">${_esc(c.tag)}</span>` : ''}
       ${c.titulo ? `<h1 class="rp-title">${_esc(c.titulo)}</h1>` : ''}
       ${c.subtitulo ? `<p class="rp-subtitle">${_esc(c.subtitulo)}</p>` : ''}
+      ${c.titulo ? `<span class="rp-rule" aria-hidden="true"></span>` : ''}
     </div>`;
   }
 
@@ -96,7 +101,8 @@ const Renderer = (() => {
     return _hero(c, 160) + `<div class="rp-body">${_citacao(c)}${_galeria(c.galeria || [])}${_texto(c.texto)}</div>`;
   }
   function _layoutGaleriaCompleta(c) {
-    return `<div class="rp-body">${c.titulo ? `<h1 class="rp-title-dark">${_esc(c.titulo)}</h1>` : ''}
+    return `<div class="rp-body">${c.titulo ? `<h1 class="rp-title-dark">${_esc(c.titulo)}</h1>
+      <span class="rp-rule rp-rule-dark" aria-hidden="true"></span>` : ''}
       ${_galeria(c.galeria || [], 3)}${_texto(c.texto)}</div>`;
   }
   function _layoutTimeline(c) {

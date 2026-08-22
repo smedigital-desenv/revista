@@ -12,7 +12,7 @@ Cada escola publica páginas dentro de temas criados pela Secretaria.
 ```
 index.html            shell SPA + roteador
 404.html              fallback SPA do GitHub Pages
-css/global.css        design system (dark + vibrante)
+css/global.css        design system (app escuro + paginas da revista claras)
 js/
   config.js           credenciais Supabase + constantes
   supabase.js         cliente + auth Google

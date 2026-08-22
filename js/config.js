@@ -34,10 +34,13 @@ const CONFIG = {
     { id: 'indicadores',        label: 'Painel de Indicadores',  icone: '📊', descricao: 'Métricas em destaque' },
   ],
 
+  // Paleta alinhada a identidade do Mural de Praticas Pedagogicas:
+  // marinho, oliva, terracota e tons de giz. Precisa funcionar tanto no
+  // app (fundo escuro) quanto nas paginas da revista (fundo claro).
   CORES: [
-    '#FF3366', '#7C3AED', '#2563EB', '#059669',
-    '#D97706', '#DC2626', '#0891B2', '#FF6B35',
-    '#00C896', '#FFD200', '#6366F1', '#EC4899',
+    '#1B3A6B', '#2E5FA3', '#4C8FB5', '#5FB3CE',
+    '#7A7D2A', '#9AA33C', '#79B473', '#2F8C7F',
+    '#C2603F', '#D98E4A', '#D9738C', '#8A6BA8',
   ],
 
   // status na revista da própria escola (a escola controla)

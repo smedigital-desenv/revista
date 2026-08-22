@@ -9,19 +9,19 @@ const MockData = {
     cidade: 'Ribeirão Preto · SP',
     descricao: 'Revista digital das unidades escolares — edição de demonstração',
     edicao: '2026',
-    cor_primaria: '#FF3366',
+    cor_primaria: '#1B3A6B',
   },
 
   temas: [
-    { id: 't1', nome: 'Boas Práticas da Cozinha', descricao: 'Alimentação saudável e merenda nas escolas.', icone: '🍎', cor: '#FF6B35', tag: 'Alimentação', status: 'ativo', ordem: 1, novo: true },
-    { id: 't2', nome: 'Leitura e Literatura', descricao: 'Projetos de incentivo à leitura.', icone: '📚', cor: '#7C3AED', tag: 'Cultura', status: 'ativo', ordem: 2, novo: false },
-    { id: 't3', nome: 'Sustentabilidade', descricao: 'Hortas, reciclagem e meio ambiente.', icone: '🌱', cor: '#00C896', tag: 'Meio Ambiente', status: 'ativo', ordem: 3, novo: false },
+    { id: 't1', nome: 'Boas Práticas da Cozinha', descricao: 'Alimentação saudável e merenda nas escolas.', icone: '🍎', cor: '#C2603F', tag: 'Alimentação', status: 'ativo', ordem: 1, novo: true },
+    { id: 't2', nome: 'Leitura e Literatura', descricao: 'Projetos de incentivo à leitura.', icone: '📚', cor: '#8A6BA8', tag: 'Cultura', status: 'ativo', ordem: 2, novo: false },
+    { id: 't3', nome: 'Sustentabilidade', descricao: 'Hortas, reciclagem e meio ambiente.', icone: '🌱', cor: '#7A7D2A', tag: 'Meio Ambiente', status: 'ativo', ordem: 3, novo: false },
   ],
 
   unidades: [
-    { id: 'u1', nome: 'EMEF Padre Anchieta', sigla: 'EPA', cidade: 'Ribeirão Preto', regiao: 'Centro', cor: '#FF3366', status: 'ativo' },
-    { id: 'u2', nome: 'EMEI Monteiro Lobato', sigla: 'EML', cidade: 'Ribeirão Preto', regiao: 'Norte', cor: '#00E5FF', status: 'ativo' },
-    { id: 'u3', nome: 'EMEF Cecília Meireles', sigla: 'ECM', cidade: 'Ribeirão Preto', regiao: 'Sul', cor: '#FFD200', status: 'ativo' },
+    { id: 'u1', nome: 'EMEF Padre Anchieta', sigla: 'EPA', cidade: 'Ribeirão Preto', regiao: 'Centro', cor: '#1B3A6B', status: 'ativo' },
+    { id: 'u2', nome: 'EMEI Monteiro Lobato', sigla: 'EML', cidade: 'Ribeirão Preto', regiao: 'Norte', cor: '#2E5FA3', status: 'ativo' },
+    { id: 'u3', nome: 'EMEF Cecília Meireles', sigla: 'ECM', cidade: 'Ribeirão Preto', regiao: 'Sul', cor: '#D98E4A', status: 'ativo' },
   ],
 
   inscricoes: [
@@ -36,7 +36,7 @@ const MockData = {
       id: 'p1', unidade_id: 'u1', tema_id: 't1', inscricao_id: 'i1', titulo: 'Nossa horta na merenda',
       ordem: 1, layout: 'hero-texto-galeria', status: 'publicado', principal_status: 'aprovado',
       conteudo: {
-        tag: 'Alimentação', tagCor: '#FF6B35', titulo: 'Da horta ao prato',
+        tag: 'Alimentação', tagCor: '#C2603F', titulo: 'Da horta ao prato',
         subtitulo: 'Como a horta escolar transformou a merenda',
         texto: 'Os alunos plantaram, cuidaram e colheram.\nO resultado chegou direto à cozinha da escola, valorizando alimentos frescos e o trabalho coletivo.',
         galeria: ['https://picsum.photos/seed/horta1/600/400', 'https://picsum.photos/seed/horta2/600/400', 'https://picsum.photos/seed/horta3/600/400'],
@@ -46,7 +46,7 @@ const MockData = {
       id: 'p2', unidade_id: 'u1', tema_id: 't1', inscricao_id: 'i1', titulo: 'Números do projeto',
       ordem: 2, layout: 'indicadores', status: 'publicado', principal_status: 'aprovado',
       conteudo: {
-        tag: 'Resultados', tagCor: '#FF6B35', titulo: 'O impacto em números',
+        tag: 'Resultados', tagCor: '#C2603F', titulo: 'O impacto em números',
         subtitulo: 'Primeiro semestre de 2026',
         indicadores: [
           { icone: '🧑‍🎓', valor: '320', label: 'Alunos envolvidos', variacao: '+18%' },
@@ -61,7 +61,7 @@ const MockData = {
       id: 'p3', unidade_id: 'u2', tema_id: 't1', inscricao_id: 'i2', titulo: 'Cozinha experimental',
       ordem: 1, layout: 'citacao-galeria', status: 'publicado', principal_status: 'pendente',
       conteudo: {
-        tag: 'Alimentação', tagCor: '#00E5FF', titulo: 'Sabores da infância',
+        tag: 'Alimentação', tagCor: '#2E5FA3', titulo: 'Sabores da infância',
         subtitulo: 'Oficinas culinárias com as famílias',
         citacao: 'Cozinhar junto é também aprender a cuidar.',
         citacaoAutor: 'Profª Ana',
@@ -73,7 +73,7 @@ const MockData = {
       id: 'p4', unidade_id: 'u3', tema_id: 't2', inscricao_id: 'i3', titulo: 'Clube do livro',
       ordem: 1, layout: 'timeline', status: 'publicado', principal_status: 'aprovado',
       conteudo: {
-        tag: 'Leitura', tagCor: '#FFD200', titulo: 'Um ano de leituras',
+        tag: 'Leitura', tagCor: '#D98E4A', titulo: 'Um ano de leituras',
         subtitulo: 'A trajetória do clube do livro',
         eventos: [
           { data: 'Fev 2026', titulo: 'Abertura', descricao: 'Primeiro encontro com 40 alunos.' },
@@ -86,7 +86,7 @@ const MockData = {
       id: 'p5', unidade_id: 'u3', tema_id: 't2', inscricao_id: 'i3', titulo: 'Galeria do sarau',
       ordem: 2, layout: 'galeria-completa', status: 'publicado', principal_status: 'nenhum',
       conteudo: {
-        titulo: 'Momentos do sarau', tagCor: '#FFD200',
+        titulo: 'Momentos do sarau', tagCor: '#D98E4A',
         galeria: ['https://picsum.photos/seed/sarau1/600/400', 'https://picsum.photos/seed/sarau2/600/400', 'https://picsum.photos/seed/sarau3/600/400', 'https://picsum.photos/seed/sarau4/600/400'],
         texto: 'Registros das apresentações dos alunos.',
       },
