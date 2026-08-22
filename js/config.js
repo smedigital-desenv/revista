@@ -12,7 +12,7 @@ const CONFIG = {
   DEMO_MODE: true,
 
   APP_TITLE:   'Portfolio MAG',
-  APP_VERSION: '1.1.0',   // mantenha igual ao ?v= das tags de index.html
+  APP_VERSION: '1.2.0',   // mantenha igual ao ?v= das tags de index.html
 
   CACHE_TTL: {
     CONFIG:    21600,   // 6h

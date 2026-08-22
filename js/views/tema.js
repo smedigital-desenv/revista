@@ -7,7 +7,7 @@ const TemaView = (() => {
   async function render(container, params) {
     _ctx = params || {};
     const { tema, unidades } = await Api.temas.getData(params.temaId);
-    const cor = tema.cor || '#FF6B35';
+    const cor = tema.cor || '#C2603F';
 
     const totalPaginas = unidades.reduce((s, u) => s + (u.total_pags || 0), 0);
     const totalPrincipal = unidades.reduce((s, u) => s + (u.total_principal || 0), 0);
@@ -29,7 +29,7 @@ const TemaView = (() => {
     <div id="view-tema" class="view-pad">
       <section class="tema-hero" style="--tema-cor:${cor}">
         <div class="tema-hero-blob" style="background:${cor}"></div>
-        <span class="tema-hero-chip" style="background:${cor}22;color:${cor}">
+        <span class="tema-hero-chip" style="background:${cor}">
           ${tema.icone || '🎯'} ${UI._esc(tema.tag || tema.nome)}
         </span>
         <h1 class="tema-hero-title">${UI._esc(tema.nome)}</h1>
@@ -84,7 +84,7 @@ const TemaView = (() => {
   }
 
   function _unidadeRow(u) {
-    const cor = u.cor || '#7C3AED';
+    const cor = u.cor || '#7A7D2A';
     const n = u.total_pags || 0;
     const thumbs = Array.from({ length: Math.min(n, 4) }).map((_, i) =>
       `<span class="ur-thumb" style="border-color:${cor};color:${cor}">${i + 1}</span>`).join('') +

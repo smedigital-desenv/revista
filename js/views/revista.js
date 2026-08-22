@@ -12,7 +12,7 @@ const RevistaView = (() => {
     _state.pages = paginas;
     _state.current = 0;
 
-    const cor = unidade.cor || '#FF3366';
+    const cor = unidade.cor || '#1B3A6B';
     const podeEditar = Store.isOwnerOf(unidade.id);
     const scopeLabel = scope === 'principal' ? '★ Revista principal' : 'Revista da escola';
 
@@ -114,7 +114,7 @@ const RevistaView = (() => {
     const dots = document.getElementById('page-dots');
     if (dots) dots.innerHTML = _renderDots();
     const thumbs = document.getElementById('rev-thumbs');
-    if (thumbs) thumbs.innerHTML = _renderThumbs(_state.unidade.cor || '#FF3366');
+    if (thumbs) thumbs.innerHTML = _renderThumbs(_state.unidade.cor || '#1B3A6B');
   }
 
   return { render, flip, jumpTo, _params };

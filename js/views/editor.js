@@ -82,7 +82,7 @@ const EditorView = (() => {
              oninput="EditorView.onTitleChange(this)">`)}
         <div class="ed-prop">
           <div class="ed-prop-label">Cor de destaque</div>
-          ${UI.colorPicker(_cur().conteudo?.tagCor || '#FF3366', 'EditorView.setColor')}
+          ${UI.colorPicker(_cur().conteudo?.tagCor || '#1B3A6B', 'EditorView.setColor')}
         </div>
         <div class="ed-prop">
           <div class="ed-prop-label">Mídia (Storage)</div>
@@ -106,7 +106,7 @@ const EditorView = (() => {
     return {
       id: null, unidade_id: _s.params.unidadeId, tema_id: _s.params.temaId,
       titulo: 'Nova página', layout: 'hero-texto-galeria', status: 'rascunho', principal_status: 'nenhum',
-      conteudo: { tagCor: '#FF3366' }, inscricao_id: null,
+      conteudo: { tagCor: '#1B3A6B' }, inscricao_id: null,
       ordem: (_s.pages?.length || 0) + 1,
     };
   }

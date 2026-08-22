@@ -16,7 +16,7 @@ const UI = (() => {
       wrap.id = 'toast-wrap';
       document.body.appendChild(wrap);
     }
-    const colors = { info: 'var(--c3)', success: 'var(--c6)', error: 'var(--c1)' };
+    const colors = { info: 'var(--c3)', success: 'var(--c6)', error: 'var(--c5)' };
     const el = document.createElement('div');
     el.className = 'toast';
     el.style.borderLeftColor = colors[type] || colors.info;

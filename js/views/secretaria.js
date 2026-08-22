@@ -51,7 +51,7 @@ const SecretariaView = (() => {
   }
 
   function _temaCard(t) {
-    const cor = t.cor || '#FF6B35';
+    const cor = t.cor || '#C2603F';
     const params = encodeURIComponent(JSON.stringify({ temaId: t.id, temaNome: t.nome }));
     return `<div class="tema-card" onclick="Router.navigate('tema', JSON.parse(decodeURIComponent('${params}')))">
       ${t.novo ? `<span class="tema-badge-novo">Novo</span>` : ''}
@@ -77,8 +77,8 @@ const SecretariaView = (() => {
           ${UI.formGroup('Ícone', `<input id="nt-icone" class="input" maxlength="4" placeholder="🍎">`)}
           ${UI.formGroup('Tag', `<input id="nt-tag" class="input" placeholder="Alimentação">`)}
         </div>
-        ${UI.formGroup('Cor', UI.colorPicker('#FF6B35', 'SecretariaView.setCor'))}
-        <input type="hidden" id="nt-cor" value="#FF6B35">
+        ${UI.formGroup('Cor', UI.colorPicker('#C2603F', 'SecretariaView.setCor'))}
+        <input type="hidden" id="nt-cor" value="#C2603F">
       </div>
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
