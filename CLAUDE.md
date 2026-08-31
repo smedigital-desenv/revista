@@ -42,6 +42,23 @@ RLS, nem no grant. **Mudança de acesso acontece no central, não aqui.**
 restrições foram postas de propósito e um `permission denied` vindo delas é o
 sistema funcionando.
 
+## Diagnóstico: `teste-ponte.html`
+
+Página separada que exercita a integração com o central **sem depender de virar
+o `DEMO_MODE`** — o que quebraria a demonstração pública se algo estivesse
+errado. Ela é somente-leitura e mostra, passo a passo: sessão no central,
+sistema liberado, se o papel serve para administrar, se a ponte emite sessão, se
+o banco a reconhece, e se o catálogo de escolas do central é legível.
+
+É a primeira coisa a abrir quando alguém disser "não consigo entrar". Fica atrás
+do login do central como todo o resto, e pode ser apagada quando o sistema
+estiver estável.
+
+⚠️ Ela declara `window.ACESSO_TELA = null`. Sem isso o `acesso-sme.js` usaria o
+nome do arquivo como slug de tela (`teste-ponte`), que não existe no catálogo, e
+bloquearia a página com "sem permissão" — justamente a mensagem que atrapalha
+quem está diagnosticando.
+
 ## Armadilhas específicas deste repositório
 
 - **O script do banco (`db/schema.sql`) não é versionado, e não deve ser.** Ele
