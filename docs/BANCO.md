@@ -71,9 +71,31 @@ lista vazia que parece "não há escolas".
 
 ## Quem é secretaria
 
-`sincronizar_do_central` decide: super admin do central, **ou** papel
-`secretaria` no sistema `revista`. Qualquer outro papel edita apenas a própria
-unidade. Não há terceira via, e o papel não é editável dentro da revista.
+`sincronizar_do_central` decide: super admin do central, **ou** papel que comece
+por `secretaria` no sistema `revista`. Qualquer outro papel edita apenas a
+própria unidade. Não há terceira via, e o papel não é editável dentro da revista.
+
+⚠️ **O campo `papel` de `minhas_permissoes` NÃO tem um formato único — medido no
+primeiro acesso real (2026-08-31).** Para a mesma pessoa, super admin:
+
+| de onde veio | valor |
+|---|---|
+| `sistema.papel` no navegador (`acesso-sme.js`) | `super_admin` |
+| `perms.sistemas[].papel` na ponte (`minhas_permissoes` cru) | `admin` |
+
+A divergência tem causa conhecida: o `acesso-sme.js` **substitui** a lista de
+sistemas quando quem entra é super admin (`sistemasDoSuperAdmin`) e sintetiza o
+papel; a ponte lê a resposta crua. Nenhum dos dois é `secretaria`, e naquele
+caso quem decidiu foi o `is_super_admin`.
+
+Por isso a comparação é `like 'secretaria%'` e não igualdade: cobre o slug e
+cobre o nome do papel (`Secretaria (administra a revista)`), caso o central mande
+um ou outro. **Não alargue para `admin`** — seria conceder administração por
+adivinhação, e quem é admin de verdade já entra pelo `is_super_admin`.
+
+⚠️ O caso da **Secretaria comum** (papel `secretaria`, sem super admin) ainda não
+foi exercitado em produção. `teste-ponte.html` responde isso numa olhada: a linha
+"O papel serve para administrar?".
 
 ## As sete tabelas
 
