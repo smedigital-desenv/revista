@@ -67,6 +67,12 @@ quem está diagnosticando.
 - **`paginas.inscricao_id` não é decorativo** — a listagem do tema passa por
   dentro de `inscricoes`, e página sem ele some da tela sem erro. Um trigger o
   preenche; não o remova.
+- **A sessão guardada tem prazo de 30 min, e o prazo é do RELÓGIO, não do
+  token.** `js/central.js` pula o central quando já há sessão válida — é o que
+  faz a segunda abertura custar 201 ms em vez de 934. Como o cliente usa
+  `autoRefreshToken`, amarrar isso à validade do token faria o atalho valer para
+  sempre e quem fosse removido no central continuaria entrando. Ver "o atalho da
+  sessão" em `docs/BANCO.md` antes de mexer.
 - **O papel que o central manda não tem formato único.** Medido: `admin` para a
   ponte e `super_admin` para o navegador, na mesma pessoa. Quem administra a
   revista é decidido por `is_super_admin` **ou** papel `like 'secretaria%'` —

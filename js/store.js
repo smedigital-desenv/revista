@@ -30,20 +30,63 @@ const Store = (() => {
   }
 
   // ── Cache com TTL ──────────────────────────────────────
+  //
+  // Vive na memória E no sessionStorage. Só na memória, o TTL de 6 h dos temas
+  // nunca chegava a valer: ele morria a cada recarregamento, e toda abertura de
+  // página refazia todas as consultas. Com o sessionStorage, voltar a uma tela
+  // já visitada é instantâneo.
+  //
+  // ⚠️ A chave é PREFIXADA PELO ID DA PESSOA. Sem isso, o super admin que usa
+  // "ver como" veria, na mesma aba, o cache do perfil anterior — dado de uma
+  // unidade aparecendo para outra, sem erro nenhum. É a mesma aba, é o mesmo
+  // sessionStorage: o que separa é a chave.
+  //
+  // ⚠️ Fecha a aba, acaba. É de propósito: aqui há conteúdo de páginas de
+  // escola, e cache que sobrevive ao fechamento passa a ser cópia de dado
+  // guardada em máquina alheia.
+  const _PREFIXO = 'MAG_CACHE_v1';
+  const _chaveSessao = (key) => `${_PREFIXO}:${_state.user?.id || 'anon'}:${key}`;
+
   function cacheSet(key, data, ttlSec) {
-    _state.cache[key] = { data, expiresAt: Date.now() + (ttlSec * 1000) };
+    const entrada = { data, expiresAt: Date.now() + (ttlSec * 1000) };
+    _state.cache[key] = entrada;
+    // Falha de escrita (aba anônima restrita, cota estourada) não pode derrubar
+    // a tela: o cache é conforto, e a memória já guardou.
+    try { sessionStorage.setItem(_chaveSessao(key), JSON.stringify(entrada)); }
+    catch (_) { /* segue sem persistir */ }
   }
+
   function cacheGet(key) {
-    const e = _state.cache[key];
+    let e = _state.cache[key];
+    if (!e) {
+      try {
+        const cru = sessionStorage.getItem(_chaveSessao(key));
+        if (cru) { e = JSON.parse(cru); _state.cache[key] = e; }
+      } catch (_) { e = null; }   // JSON corrompido é o mesmo que não ter cache
+    }
     if (!e) return null;
-    if (Date.now() > e.expiresAt) { delete _state.cache[key]; return null; }
+    if (Date.now() > e.expiresAt) { cacheInvalidate(key); return null; }
     return e.data;
   }
+
   function cacheInvalidate(...keys) {
-    keys.forEach((k) => delete _state.cache[k]);
+    keys.forEach((k) => {
+      delete _state.cache[k];
+      try { sessionStorage.removeItem(_chaveSessao(k)); } catch (_) {}
+    });
     EventBus.emit('cache:invalidate', { keys });
   }
-  function cacheInvalidateAll() { _state.cache = {}; }
+
+  function cacheInvalidateAll() {
+    _state.cache = {};
+    try {
+      // Varre só o que é nosso: o sessionStorage é compartilhado com o
+      // acesso-sme.js (ACESSO_PERMS_v1) e com os pacotes de outros sistemas.
+      Object.keys(sessionStorage)
+        .filter((k) => k.startsWith(_PREFIXO + ':'))
+        .forEach((k) => sessionStorage.removeItem(k));
+    } catch (_) {}
+  }
 
   // ── Navegação ──────────────────────────────────────────
   function pushHistory(view, params) {
