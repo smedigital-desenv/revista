@@ -162,6 +162,18 @@ ao bucket ainda não é exibido por nenhum layout.
 
 ## Verificação (rode depois de qualquer mudança de esquema)
 
+O jeito prático é o `db/verificar.sql` — como o schema, ele **não é versionado**
+e é entregue fora do repositório. São 10 linhas de resposta, e **todas têm de
+sair `OK`**: as 7 tabelas, RLS ligado nas 7, nenhuma policy sem condição, `anon`
+sem tabela e sem função, bucket privado, os 3 triggers de `paginas`, as 8
+funções, as 4 policies de storage e o seed de `config`.
+
+⚠️ Ele foi validado sabotando o banco de propósito (grant para `anon`, RLS
+desligado, policy `using (true)`): as três sabotagens acusaram. Verificação que
+só sabe dizer "OK" não vale nada.
+
+As consultas soltas equivalentes, para quando faltar o arquivo:
+
 ```sql
 -- (a) policy permissiva sem condição — tem que voltar VAZIO
 select tablename, policyname, cmd from pg_policies
