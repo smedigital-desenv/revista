@@ -20,10 +20,10 @@ const CONFIG = {
   // Com `true`, NADA do central é carregado e nada é gravado: é o estado em que
   // o site fica no ar enquanto o projeto Supabase não existe. Ver o passo a
   // passo no topo deste arquivo.
-  DEMO_MODE: true,
+  DEMO_MODE: false,
 
   APP_TITLE:   'Portfolio MAG',
-  APP_VERSION: '1.3.0',   // mantenha igual ao ?v= das tags de index.html
+  APP_VERSION: '1.3.1',   // mantenha igual ao ?v= das tags de index.html
 
   CACHE_TTL: {
     CONFIG:    21600,   // 6h

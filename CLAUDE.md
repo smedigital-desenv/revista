@@ -16,17 +16,18 @@ inscrição, publica páginas na revista **dela** e pode enviá-las para a revis
 
 Site estático (HTML/JS puro, sem framework nem build), SPA de um arquivo só.
 
-## ⚠️ O sistema ainda roda em MODO DEMONSTRAÇÃO
+## O sistema está em operação real
 
-`CONFIG.DEMO_MODE = true` em `js/config.js`, e nesse estado **todo o `Api`
-delega para `js/mock.js`**: nada persiste, nada de central, nada de banco. É o
-que está publicado hoje. Para sair disso, o passo a passo está no topo do
-`config.js` e no README — e a ordem importa: banco, ponte, cadastro no central,
-credenciais, e só então `DEMO_MODE = false`.
+`CONFIG.DEMO_MODE = false` desde 2026-08-31: banco próprio
+(`msutitbaewkpjtgvcfew`), login pelo central e Edge Function `central-bridge`
+publicada. O `js/mock.js` continua no repositório e volta a valer se alguém
+religar a chave — é o caminho para demonstrar o sistema sem banco, não um
+resquício.
 
-O projeto Supabase da revista é o `msutitbaewkpjtgvcfew`; a URL e a chave
-`anon` já estão no `config.js`. Falta rodar o `db/schema.sql` nele e publicar a
-`central-bridge` — só então `DEMO_MODE` pode virar `false`.
+⚠️ **Religar `DEMO_MODE` é a maneira mais rápida de tirar o sistema do ar sem
+erro nenhum:** a tela abre normalmente, com dados de exemplo, e quem estiver
+usando perde o que gravou de vista. Se precisar reverter uma publicação, prefira
+voltar o commit.
 
 ## Como o acesso funciona
 
