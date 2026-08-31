@@ -81,10 +81,20 @@
     const session = await SupabaseClient.auth.getSession();
     if (!session) { showLogin('A sessão não foi instalada. Recarregue a página.'); return; }
 
-    // ── 2. Perfil neste banco (escrito pela ponte) ─────────
-    let perfil = null;
-    try { perfil = await SupabaseClient.getUserProfile(session.user.id); }
-    catch (err) { showNoAccess('Erro ao verificar seu perfil: ' + err.message); return; }
+    // ── 2. Perfil e configuração, EM PARALELO ──────────────
+    // Nenhuma das duas depende da outra; encadeá-las custava uma ida inteira ao
+    // banco em toda abertura. A config é opcional (a revista abre sem ela), o
+    // perfil não é — daí os desfechos diferentes logo abaixo.
+    const [rPerfil, rConfig] = await Promise.allSettled([
+      SupabaseClient.getUserProfile(session.user.id),
+      Api.config.getAll(),
+    ]);
+    if (rPerfil.status === 'rejected') {
+      showNoAccess('Erro ao verificar seu perfil: ' + rPerfil.reason.message);
+      return;
+    }
+    const perfil = rPerfil.value;
+    const config = rConfig.status === 'fulfilled' ? rConfig.value : {};
 
     // ⚠️ Aqui NÃO é "sem acesso": o central já confirmou o acesso à revista.
     // Perfil ausente significa que a sincronização da ponte falhou, e dizer
@@ -95,9 +105,6 @@
       return;
     }
     if (!perfil.ativo) { showNoAccess('Usuário inativo. Procure a Secretaria.'); return; }
-
-    let config = {};
-    try { config = await Api.config.getAll(); } catch (_) { /* a revista abre sem config */ }
 
     Store.init({
       id: perfil.id, email: perfil.email, nome: perfil.nome,

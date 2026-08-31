@@ -35,25 +35,59 @@ validação é feita por dentro, e é por isso que ela é feita três vezes
 ⚠️ **A checagem de permissão é refeita no servidor de propósito.** O gate do
 navegador é conforto, não segurança: qualquer pessoa pode chamar a função direto.
 
-### Quanto demora abrir a sessão — MEDIDO em produção (2026-08-31)
+### Quanto demora abrir a sessão, e o atalho que a torna rápida
 
-| situação | tempo da ponte |
-|---|---|
-| função dormindo (partida a frio) | ~6,4 s |
-| aquecimento parcial | ~4,0 s |
-| **em uso (o normal)** | **~1,7 s** |
+Medido com latência de 120 ms por chamada, em navegador, antes e depois:
 
-⚠️ **Não "otimize" a ponte com base no primeiro número.** Ele é partida a frio da
-Edge Function, e o estado normal está bem abaixo do limiar de 4 s em que as
-pessoas recarregam. Chegou-se a desenhar duas melhorias — inverter
-`createUser`/`generateLink` (hoje a primeira sempre falha para quem já existe) e
-rodar a sincronização em paralelo com o grant de senha. Elas continuam válidas
-como ideia, mas não se justificavam: o custo é mais um deploy da função e risco
-novo num caminho que já funciona.
+| | antes | depois |
+|---|---|---|
+| primeira abertura | 1309 ms · 6 chamadas | **1069 ms · 5 chamadas** |
+| abertura seguinte | 934 ms · 4 chamadas | **201 ms · 2 chamadas** |
 
-O que sobra é inerente: a primeira pessoa a entrar depois de horas paradas
-espera a função acordar. `js/central.js` mede e imprime cada perna no console —
-é por ali que se investiga, nunca no olho.
+O que mudou:
+
+1. **A ponte faz 4 idas em vez de 6.** `generateLink` vem antes de `createUser`
+   (o caso comum é a pessoa já existir, e `createUser` falhava sempre antes de
+   fazer o que precisava), e o grant de senha roda em paralelo com a RPC de
+   sincronização — nenhuma depende do resultado da outra.
+2. **Perfil e configuração em paralelo** no `app.js`, e a tela de início deixou
+   de rebuscar a config que o `Store` já tem.
+3. **O cache do `Store` vive no `sessionStorage`**, não só na memória. Sem isso o
+   TTL de 6 h dos temas nunca valia: morria a cada recarregamento.
+4. **Sessão já aberta não é reaberta** — é o que explica os 201 ms.
+
+#### ⚠️ O atalho da sessão é decisão de CONTROLE DE ACESSO
+
+`CentralSME.entrar()` devolve a sessão guardada sem passar pelo central, e isso
+tem prazo: **30 minutos** (`VALIDADE_ATALHO`), contados do relógio de parede.
+
+**Não troque esse limite pela validade do token.** O cliente é criado com
+`autoRefreshToken: true`, então o supabase-js renova a sessão sozinho,
+indefinidamente — amarrar o atalho a "a sessão expira em 1 h" o faria valer
+**para sempre**, e quem fosse removido no central continuaria entrando sem
+limite. Foi exatamente o defeito que este código teve por alguns minutos durante
+a implementação.
+
+Consequências, ditas por extenso:
+
+- remover alguém no central faz efeito em **até 30 min**, não na hora;
+- o recorte por unidade **não depende disso**: quem o aplica é o Postgres, a
+  cada consulta;
+- sessão aberta em **simulação** nunca é reaproveitada (a marca
+  `MAG_SESSAO_v1` registra isso), senão o super admin encerraria a simulação no
+  central e continuaria vendo o sistema pelos olhos da outra pessoa;
+- sem a marca, o atalho não é usado — na dúvida, pergunta-se ao central.
+
+⚠️ Com o atalho, o `acesso-sme.js` pode nem ser carregado na página. Por isso
+`escolasDoCentral()` chama `garantirCentral()` antes de usar `window.ACESSO_SB`:
+o botão **Importar do central** é a única tela que precisa do central depois da
+entrada.
+
+#### Partida a frio
+
+A primeira pessoa a entrar depois de horas paradas espera a Edge Function
+acordar — medido em produção: **6,4 s** dormindo contra **1,7 s** em uso. Não há
+o que otimizar aí no código; é característica da plataforma.
 
 ## `usuarios` e `usuario_unidades` são ESPELHO, não cadastro
 

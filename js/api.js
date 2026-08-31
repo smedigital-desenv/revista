@@ -24,23 +24,29 @@ const Api = (() => {
       const cached = Store.cacheGet('secretaria_data');
       if (cached) return cached;
 
+      // A config já foi carregada na abertura da sessão e está no Store. Buscá-la
+      // de novo aqui era uma consulta a cada visita ao início, para trazer o que
+      // já estava na mão.
+      const jaTem = Store.getConfig();
+      const temConfig = jaTem && Object.keys(jaTem).length > 0;
+
       const [temasRes, configRes] = await Promise.all([
         _sb().from('temas')
           .select('*, inscricoes(count), paginas(count)')
           .eq('status', 'ativo')
           .order('ordem'),
-        _sb().from('config').select('chave, valor'),
+        temConfig ? null : _sb().from('config').select('chave, valor'),
       ]);
 
       const temasRaw = _check(temasRes);
-      const configRaw = _check(configRes);
+      const configRaw = configRes ? _check(configRes) : null;
 
       const temas = (temasRaw || []).map((t) => ({
         ...t,
         total_unidades: _count(t.inscricoes),
         total_paginas:  _count(t.paginas),
       }));
-      const config = {};
+      const config = temConfig ? jaTem : {};
       (configRaw || []).forEach((c) => { config[c.chave] = c.valor; });
 
       const result = { config, temas };

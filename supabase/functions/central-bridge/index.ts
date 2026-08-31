@@ -178,18 +178,25 @@ Deno.serve(async (req) => {
     });
 
     // Descobre (ou cria) o usuário deste projeto para o e-mail em questão.
+    //
+    // ⚠️ A ORDEM AQUI É DESEMPENHO, não estilo. `generateLink` vem primeiro
+    // porque o caso comum é a pessoa JÁ existir: ela entra todo dia. Com
+    // `createUser` na frente, toda entrada pagava uma ida ao GoTrue que sempre
+    // falha ("já existe") antes de fazer o que precisava. Só o primeiro acesso
+    // de cada pessoa passa pelas duas.
+    //
+    // `generateLink` devolve o usuário e NÃO envia e-mail nenhum.
     let uid = '';
-    const criado = await admin.auth.admin.createUser({ email: alvo, email_confirm: true });
-    if (criado.data?.user?.id) {
-      uid = criado.data.user.id;
-    } else {
-      // Já existia. `generateLink` devolve o usuário sem enviar e-mail nenhum.
-      const link = await admin.auth.admin.generateLink({ type: 'magiclink', email: alvo });
-      if (link.error || !link.data?.user?.id) {
-        return json({ erro: 'falha_ao_identificar_usuario',
-                      detalhe: link.error?.message || criado.error?.message || '' }, 500);
-      }
+    const link = await admin.auth.admin.generateLink({ type: 'magiclink', email: alvo });
+    if (link.data?.user?.id) {
       uid = link.data.user.id;
+    } else {
+      const criado = await admin.auth.admin.createUser({ email: alvo, email_confirm: true });
+      if (!criado.data?.user?.id) {
+        return json({ erro: 'falha_ao_identificar_usuario',
+                      detalhe: criado.error?.message || link.error?.message || '' }, 500);
+      }
+      uid = criado.data.user.id;
     }
 
     // ── 4) Abre a sessão SEM depender de OTP ───────────────────────────────
@@ -211,39 +218,46 @@ Deno.serve(async (req) => {
     const upd = await admin.auth.admin.updateUserById(uid, { password: senha, email_confirm: true });
     if (upd.error) return json({ erro: 'falha_ao_preparar_sessao', detalhe: upd.error.message }, 500);
 
-    const v = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: { apikey: anon, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: alvo, password: senha }),
-    });
+    // ── 5) Sessão e sincronização, EM PARALELO ────────────────────────────
+    // As duas só dependem do `uid`, que já temos. Encadeá-las custava uma ida
+    // inteira a mais em toda entrada, sem que nenhuma precisasse do resultado
+    // da outra.
+    //
+    // A sincronização espelha identidade e vínculos de escola. Sem ela, quem
+    // existe no central mas não tem linha em `usuarios` entra e NÃO VÊ NADA —
+    // `meu_usuario_id()` devolve nulo e toda função de isolamento nega por
+    // padrão. O central é a fonte da verdade: nome, papel, super admin e
+    // escolas vêm de lá a cada acesso, o que também impede os dois bancos de
+    // divergirem com o tempo.
+    //
+    // Na simulação, quem é sincronizado é o ALVO, com as permissões DELE
+    // (`permsAlvo`) — é a sessão dele que está sendo aberta.
+    const perfilCentral = permsAlvo?.perfil || {};
+    const sistemaAlvo = Array.isArray(permsAlvo?.sistemas)
+      ? permsAlvo.sistemas.find((s: { slug?: string }) => s?.slug === SISTEMA)
+      : null;
+
+    const [v, sync] = await Promise.all([
+      fetch(`${url}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { apikey: anon, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: alvo, password: senha }),
+      }),
+      admin.rpc('sincronizar_do_central', {
+        p_auth_uid: uid,
+        p_email: alvo,
+        p_nome: perfilCentral.nome ?? null,
+        p_papel_central: sistemaAlvo?.papel ?? null,
+        p_is_super_admin: !!perfilCentral.is_super_admin,
+        p_escolas: permsAlvo?.escolas || [],
+      }),
+    ]);
+
     const sessao = await v.json().catch(() => null);
     if (!v.ok || !sessao?.access_token) {
       return json({ erro: 'falha_ao_abrir_sessao', status: v.status,
                     detalhe: JSON.stringify(sessao) }, 500);
     }
-
-    // ── 5) Sincroniza identidade e vínculos de escola ──────────────────────
-    // Sem isto, quem existe no central mas não tem linha em `usuarios` aqui
-    // entra e NÃO VÊ NADA — `meu_usuario_id()` devolve nulo e toda função de
-    // isolamento nega por padrão. O central é a fonte da verdade: nome, papel,
-    // super admin e escolas vêm de lá a cada acesso, o que também impede os
-    // dois bancos de divergirem com o tempo.
-    //
-    // Na simulação, quem é sincronizado é o ALVO, com as permissões DELE
-    // (`permsAlvo`) — é a sessão dele que está sendo aberta, e o banco tem que
-    // enxergá-lo como ele é.
-    const perfilCentral = permsAlvo?.perfil || {};
-    const sistemaAlvo = Array.isArray(permsAlvo?.sistemas)
-      ? permsAlvo.sistemas.find((s: { slug?: string }) => s?.slug === SISTEMA)
-      : null;
-    const sync = await admin.rpc('sincronizar_do_central', {
-      p_auth_uid: uid,
-      p_email: alvo,
-      p_nome: perfilCentral.nome ?? null,
-      p_papel_central: sistemaAlvo?.papel ?? null,
-      p_is_super_admin: !!perfilCentral.is_super_admin,
-      p_escolas: permsAlvo?.escolas || [],
-    });
     if (sync.error) {
       // Não aborta: a sessão já é válida. Mas registra, porque sem a
       // sincronização a pessoa vê telas vazias e ninguém saberia por quê.

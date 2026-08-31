@@ -48,6 +48,61 @@ const CentralSME = (() => {
    *   null quando o central já assumiu a tela (redirecionou para o login ou
    *   pintou o aviso de "sem acesso") — nesse caso não há nada a fazer aqui.
    */
+  // Marca deixada pela ponte, para o atalho abaixo saber em que condições a
+  // sessão guardada foi aberta.
+  const MARCA = 'MAG_SESSAO_v1';
+
+  // ⚠️ De quanto em quanto tempo o central é consultado de novo, no máximo.
+  //
+  // NÃO troque isto pela validade do token. O cliente é criado com
+  // `autoRefreshToken: true`, então o supabase-js renova a sessão sozinho,
+  // indefinidamente: confiar em "a sessão expira em 1 h" faria o atalho valer
+  // PARA SEMPRE, e quem fosse removido no central continuaria entrando. O
+  // relógio de parede é o que garante que a permissão volte a ser perguntada.
+  //
+  // 30 min é o acordo: é o atraso máximo para uma remoção de acesso fazer
+  // efeito, e o preço é uma abertura completa a cada meia hora de uso.
+  // O recorte por unidade não depende disto — quem o aplica é o Postgres, a
+  // cada consulta.
+  const VALIDADE_ATALHO = 30 * 60 * 1000;
+
+  /**
+   * Carrega os módulos do central, uma vez só, e devolve `window.AcessoSME`.
+   *
+   * Existe como função separada porque há DOIS caminhos que precisam do
+   * central: a abertura de sessão e a importação de escolas do catálogo. Com o
+   * atalho da sessão guardada, a abertura muitas vezes nem passa por aqui — e
+   * aí a importação teria de carregá-los por conta própria.
+   *
+   * ⚠️ `carregarScript` em SÉRIE de propósito: o `acesso-sme.js` é servido por
+   * outro repositório e pode usar `window.supabase` já no topo do arquivo.
+   * Paralelizar pode fazê-lo rodar antes de o SDK existir, e o sintoma seria
+   * login quebrado para todo mundo. O `<link rel="preload">` do index.html
+   * adianta o DOWNLOAD sem mexer nessa ordem.
+   */
+  let _central = null;
+  function garantirCentral() {
+    if (_central) return _central;
+    _central = (async () => {
+      // Precisa vir ANTES de acesso-sme.js: é assim que ele sabe qual sistema
+      // conferir. `ACESSO_TELA = null` marca a página como o portal do sistema —
+      // a revista é uma SPA de um arquivo só, sem tela por nome de arquivo.
+      window.ACESSO_SISTEMA = 'revista';
+      window.ACESSO_TELA = null;
+      window.ACESSO_LOGIN = BASE + 'login.html';
+
+      if (!window.AcessoSME) {
+        await carregarScript(BASE + 'config.js');
+        await carregarScript(BASE + 'acesso-sme.js');
+      }
+      const A = window.AcessoSME;
+      if (!A || !A.pronto) throw new Error('O módulo de acesso central não carregou.');
+      await A.pronto;
+      return A;
+    })();
+    return _central;
+  }
+
   async function entrar() {
     t0 = performance.now();
 
@@ -59,21 +114,29 @@ const CentralSME = (() => {
     }
     marcar('prerender');
 
-    // Precisa vir ANTES de acesso-sme.js: é assim que ele sabe qual sistema
-    // conferir. `ACESSO_TELA = null` marca a página como o portal do sistema —
-    // a revista é uma SPA de um arquivo só, sem tela por nome de arquivo.
-    window.ACESSO_SISTEMA = 'revista';
-    window.ACESSO_TELA = null;
-    window.ACESSO_LOGIN = BASE + 'login.html';
+    // ── Atalho: já existe sessão desta revista? ────────────────────────────
+    // O supabase-js guarda a sessão no localStorage. Sem este atalho, TODO
+    // carregamento de página refazia o revezamento inteiro — carregar os dois
+    // módulos do central, pedir o token, chamar a ponte, e a ponte fazer quatro
+    // idas por dentro — para chegar a uma sessão que já estava ali. Medido, era
+    // a maior parte do tempo de abertura.
+    //
+    // ⚠️ Isto NÃO afrouxa o controle de acesso, e a razão é o prazo: a sessão
+    // vale 1 h, e ao expirar o caminho completo roda de novo — com a checagem
+    // no central. É o mesmo desenho do MAPA ("uma chamada por sessão, não por
+    // consulta"). Quem for removido no central perde o acesso no vencimento,
+    // não instantaneamente; e o recorte por unidade, esse, continua sendo
+    // aplicado pelo Postgres a cada consulta.
+    const guardada = await sessaoGuardada();
+    if (guardada) {
+      marcar('sessao_guardada');
+      relatarTempos();
+      return guardada;
+    }
 
-    await carregarScript(BASE + 'config.js');
-    await carregarScript(BASE + 'acesso-sme.js');
+    const A = await garantirCentral();
     marcar('acesso_sme');
 
-    const A = window.AcessoSME;
-    if (!A || !A.pronto) throw new Error('O módulo de acesso central não carregou.');
-
-    await A.pronto;
     marcar('central');
 
     // Sem perfil, o próprio acesso-sme.js já redirecionou para o login ou já
@@ -124,11 +187,7 @@ const CentralSME = (() => {
     if (error) throw new Error('Sessão recusada pelo navegador: ' + error.message);
     marcar('abrir_sessao');
 
-    // Acima de 4 s as pessoas recarregam — e recarregar no meio da abertura de
-    // sessão é o que produz o "só funciona na segunda vez".
-    const total = Math.round(performance.now() - t0);
-    window.CentralTempos = { ...tempos, total };
-    (total > 4000 ? console.warn : console.log)('[central] tempos (ms)', window.CentralTempos);
+    relatarTempos();
 
     // Papel que o central mandou × o que o banco espera para dar administração.
     // Divergindo, a pessoa entra como unidade e a tela some sem explicar por quê.
@@ -137,6 +196,16 @@ const CentralSME = (() => {
         '— administração exige exatamente "secretaria".');
     }
 
+    // Registra em que condições esta sessão nasceu. Sessão de SIMULAÇÃO não
+    // pode ser reaproveitada pelo atalho: o super admin encerra a simulação no
+    // central e, sem isto, continuaria vendo o sistema pelos olhos da outra
+    // pessoa até a sessão vencer.
+    try {
+      sessionStorage.setItem(MARCA, JSON.stringify({
+        email: resp.email, simulando: resp.simulando || null, em: Date.now(),
+      }));
+    } catch (_) { /* sem a marca, o atalho simplesmente não é usado */ }
+
     if (!resp.sincronizado) {
       // A sessão vale, mas o espelho de identidade não foi atualizado. O sintoma
       // é tela vazia sem erro — então diz-se aqui, e não no silêncio.
@@ -144,6 +213,46 @@ const CentralSME = (() => {
     }
 
     return { email: resp.email, simulando: resp.simulando || null };
+  }
+
+  /**
+   * Devolve a entrada pronta quando já há sessão válida desta revista guardada
+   * no navegador — e nada a fazer. `null` quando é preciso abrir do zero.
+   */
+  async function sessaoGuardada() {
+    try {
+      const cliente = SupabaseClient.client;
+      if (!cliente) return null;
+
+      let marca = null;
+      try { marca = JSON.parse(sessionStorage.getItem(MARCA) || 'null'); } catch (_) {}
+      // Sem marca não se sabe COMO a sessão nasceu — pode ser de simulação.
+      // Na dúvida, refaz: custa uma abertura, não um vazamento de contexto.
+      if (!marca || marca.simulando) return null;
+
+      // O limite que importa: quanto tempo faz que o central foi consultado.
+      if (!marca.em || (Date.now() - marca.em) > VALIDADE_ATALHO) return null;
+
+      const { data, error } = await cliente.auth.getSession();
+      if (error || !data.session) return null;
+
+      // Margem de 5 min: sessão que vence no meio da navegação vira erro numa
+      // tela qualquer, longe daqui, e ninguém liga uma coisa à outra.
+      const faltam = (data.session.expires_at || 0) * 1000 - Date.now();
+      if (faltam < 5 * 60 * 1000) return null;
+
+      return { email: data.session.user?.email || marca.email, simulando: null };
+    } catch (_) {
+      return null;   // qualquer imprevisto: caminho completo, que é o que funciona
+    }
+  }
+
+  function relatarTempos() {
+    const total = Math.round(performance.now() - t0);
+    window.CentralTempos = { ...tempos, total };
+    // Acima de 4 s as pessoas recarregam — e recarregar no meio da abertura de
+    // sessão é o que produz o "só funciona na segunda vez".
+    (total > 4000 ? console.warn : console.log)('[central] tempos (ms)', window.CentralTempos);
   }
 
   /**
@@ -162,16 +271,27 @@ const CentralSME = (() => {
    * pode depender disto para funcionar.
    */
   async function escolasDoCentral() {
+    // Com o atalho da sessão guardada, o central pode nem ter sido carregado
+    // nesta página. Carrega agora — é a única tela que precisa dele depois da
+    // entrada.
+    await garantirCentral();
     const SB = window.ACESSO_SB;
-    if (!SB) throw new Error('O módulo do central não está carregado nesta sessão.');
+    if (!SB) throw new Error('O cliente do central não ficou disponível.');
     const { data, error } = await SB.from('escolas')
       .select('id, nome, ativo').order('nome');
     if (error) throw new Error(error.message);
     return (data || []).filter((e) => e.ativo !== false);
   }
 
-  function sair() {
-    if (window.AcessoSME && window.AcessoSME.signOut) return window.AcessoSME.signOut();
+  async function sair() {
+    // Sair da revista sem sair do central deixaria a pessoa num meio-termo: sem
+    // sessão aqui, com sessão lá, e o próximo carregamento a traria de volta
+    // sem pedir nada. Por isso o central é carregado se ainda não estiver.
+    try { sessionStorage.removeItem(MARCA); } catch (_) {}
+    try {
+      const A = await garantirCentral();
+      if (A && A.signOut) return A.signOut();
+    } catch (_) { /* cai para o redirecionamento abaixo */ }
     window.location.href = BASE + 'login.html';
   }
 

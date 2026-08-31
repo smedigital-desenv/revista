@@ -7,8 +7,27 @@
   <meta name="description" content="Revista digital da Secretaria Municipal de Educação">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- ⚠️ Isto é desempenho, não enfeite. A abertura de sessão é um revezamento
+       entre quatro servidores, e o custo escondido de cada um é o aperto de mão
+       (DNS + TLS) antes do primeiro byte — que no celular da escola pesa mais
+       que a consulta em si. Abrindo as conexões agora, elas já estão de pé
+       quando o código precisar.
+         · jsdelivr  — o supabase-js, que trava todo o resto até chegar
+         · projeto da revista — a ponte e todas as consultas
+         · projeto do central — para onde o acesso-sme.js pergunta as permissões -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://msutitbaewkpjtgvcfew.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://pvdhepvtoavkyoschkod.supabase.co" crossorigin>
+
+  <!-- Os dois módulos do central são buscados pelo js/central.js só DEPOIS de
+       todo o app carregar. Adiantando o download aqui, quando a vez deles
+       chegar já estão no cache do navegador — e continuam executando na ordem
+       certa, porque quem os executa segue sendo o central.js, em série. -->
+  <link rel="preload" href="/central/config.js" as="script">
+  <link rel="preload" href="/central/acesso-sme.js" as="script">
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/global.css?v=1.3.1">
+  <link rel="stylesheet" href="css/global.css?v=1.3.2">
 </head>
 <body>
 
@@ -61,20 +80,20 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Módulos (ordem obrigatória) -->
-  <script src="js/config.js?v=1.3.1"></script>
-  <script src="js/central.js?v=1.3.1"></script>
-  <script src="js/supabase.js?v=1.3.1"></script>
-  <script src="js/store.js?v=1.3.1"></script>
-  <script src="js/mock.js?v=1.3.1"></script>
-  <script src="js/api.js?v=1.3.1"></script>
-  <script src="js/ui.js?v=1.3.1"></script>
-  <script src="js/router.js?v=1.3.1"></script>
-  <script src="js/renderer.js?v=1.3.1"></script>
-  <script src="js/views/secretaria.js?v=1.3.1"></script>
-  <script src="js/views/tema.js?v=1.3.1"></script>
-  <script src="js/views/revista.js?v=1.3.1"></script>
-  <script src="js/views/editor.js?v=1.3.1"></script>
-  <script src="js/views/admin.js?v=1.3.1"></script>
-  <script src="js/app.js?v=1.3.1"></script>
+  <script src="js/config.js?v=1.3.2"></script>
+  <script src="js/central.js?v=1.3.2"></script>
+  <script src="js/supabase.js?v=1.3.2"></script>
+  <script src="js/store.js?v=1.3.2"></script>
+  <script src="js/mock.js?v=1.3.2"></script>
+  <script src="js/api.js?v=1.3.2"></script>
+  <script src="js/ui.js?v=1.3.2"></script>
+  <script src="js/router.js?v=1.3.2"></script>
+  <script src="js/renderer.js?v=1.3.2"></script>
+  <script src="js/views/secretaria.js?v=1.3.2"></script>
+  <script src="js/views/tema.js?v=1.3.2"></script>
+  <script src="js/views/revista.js?v=1.3.2"></script>
+  <script src="js/views/editor.js?v=1.3.2"></script>
+  <script src="js/views/admin.js?v=1.3.2"></script>
+  <script src="js/app.js?v=1.3.2"></script>
 </body>
 </html>
