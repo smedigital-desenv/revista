@@ -49,6 +49,11 @@ sistema funcionando.
 - **`paginas.inscricao_id` não é decorativo** — a listagem do tema passa por
   dentro de `inscricoes`, e página sem ele some da tela sem erro. Um trigger o
   preenche; não o remova.
+- **Unidade sem `escola_central_id` não alcança ninguém.** O vínculo pessoa ×
+  unidade é casado por esse id (e, como reserva, por nome exatamente igual). O
+  sintoma de um id faltando é uma escola que ninguém consegue editar, sem erro
+  nenhum — por isso o painel Admin marca em vermelho quem está sem ele, e
+  **Importar do central** existe para o id vir certo por construção.
 - **O bucket é privado: `conteudo` guarda o CAMINHO da foto, nunca a URL.** URL
   assinada expira em 1 h e viraria link quebrado gravada no banco. Quem assina
   é `Renderer.resolverArquivos`, depois do render — e toda tela que renderizar

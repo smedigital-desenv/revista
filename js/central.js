@@ -139,12 +139,36 @@ const CentralSME = (() => {
     return { email: resp.email, simulando: resp.simulando || null };
   }
 
+  /**
+   * Lista as escolas do catálogo do CENTRAL, para importar como unidades.
+   *
+   * É o que evita digitar 112 nomes à mão — e, mais importante, é o que traz o
+   * `escola_central_id` CERTO por construção. Unidade cadastrada com esse id
+   * errado (ou vazio) não recebe ninguém, e o sintoma é uma escola que ninguém
+   * consegue editar, sem erro em lugar nenhum.
+   *
+   * Usa a sessão do central (`window.ACESSO_SB`), não a da revista: são
+   * projetos Supabase diferentes, e o catálogo de escolas vive lá.
+   *
+   * ⚠️ Quem decide se essa leitura é permitida é o RLS DO CENTRAL, não este
+   * código. Se ele negar, quem chamou oferece o cadastro manual — a tela não
+   * pode depender disto para funcionar.
+   */
+  async function escolasDoCentral() {
+    const SB = window.ACESSO_SB;
+    if (!SB) throw new Error('O módulo do central não está carregado nesta sessão.');
+    const { data, error } = await SB.from('escolas')
+      .select('id, nome, ativo').order('nome');
+    if (error) throw new Error(error.message);
+    return (data || []).filter((e) => e.ativo !== false);
+  }
+
   function sair() {
     if (window.AcessoSME && window.AcessoSME.signOut) return window.AcessoSME.signOut();
     window.location.href = BASE + 'login.html';
   }
 
-  return { entrar, sair, tempos: () => ({ ...tempos }) };
+  return { entrar, sair, escolasDoCentral, tempos: () => ({ ...tempos }) };
 })();
 
 window.CentralSME = CentralSME;

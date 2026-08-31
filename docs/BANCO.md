@@ -62,6 +62,13 @@ central **não recebe ninguém** — e o sintoma é uma escola que ninguém cons
 editar. É o primeiro lugar a olhar quando alguém disser "não consigo editar
 minha escola".
 
+Por isso o painel **Admin → Unidades** marca em vermelho quem está sem vínculo,
+e o botão **Importar do central** lê o catálogo de lá (`window.ACESSO_SB`, a
+sessão do central — não a da revista) e cria as unidades com o id certo por
+construção. Quem decide se essa leitura é permitida é o RLS **do central**; se
+ele negar, a tela diz isso e oferece o cadastro manual, em vez de mostrar uma
+lista vazia que parece "não há escolas".
+
 ## Quem é secretaria
 
 `sincronizar_do_central` decide: super admin do central, **ou** papel

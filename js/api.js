@@ -113,6 +113,10 @@ const Api = (() => {
 
   // ── Unidades ────────────────────────────────────────────
   const unidades = {
+    listar: async () => _check(await _sb().from('unidades')
+      .select('id, escola_central_id, nome, sigla, cidade, regiao, cor, status')
+      .order('nome')),
+
     criar: async (payload) => {
       const data = _check(await _sb().from('unidades').insert(payload).select().single());
       Store.cacheInvalidate('admin_dashboard');

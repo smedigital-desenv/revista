@@ -66,9 +66,16 @@ CENTRAL. Como este é outro projeto Supabase, é preciso a ponte.
    unidade.
 
 ### 3. Unidades
-Cadastre cada escola em `unidades` com o `escola_central_id` **do catálogo do
-central**. É por esse id que a ponte descobre quem edita o quê; o nome é só
-caminho reserva, e casa por igualdade normalizada.
+Pelo painel **Admin → Unidades**, use **Importar do central**: ele lista o
+catálogo de escolas do central e cria as unidades já com o `escola_central_id`
+certo. É por esse id que a ponte descobre quem edita o quê.
+
+⚠️ Unidade **sem vínculo** não alcança ninguém — a escola não consegue editar a
+própria revista, e não há erro em lugar nenhum que diga isso. Por isso a lista
+marca em vermelho quem está sem vínculo.
+
+Se o RLS do central não permitir essa leitura, o modal diz isso com todas as
+letras e o caminho é **+ Nova unidade**, informando o vínculo à mão.
 
 ### 4. config.js
 ```js
