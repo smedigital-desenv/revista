@@ -13,8 +13,8 @@
    NUNCA entra aqui: este repositório é público.
    ============================================================ */
 const CONFIG = {
-  SUPABASE_URL:      'https://xxxxxxxxxxx.supabase.co',
-  SUPABASE_ANON_KEY: 'COLE_SUA_ANON_KEY_AQUI',
+  SUPABASE_URL:      'https://msutitbaewkpjtgvcfew.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zdXRpdGJhZXdrcGp0Z3ZjZmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxOTUzODMsImV4cCI6MjEwMzc3MTM4M30.DkwtagjOdGdwh3GjRrO-ErCulVGuBElk-0XrIbN8-IY',
 
   // MODO DEMONSTRAÇÃO — sem login, dados de exemplo na memória (js/mock.js).
   // Com `true`, NADA do central é carregado e nada é gravado: é o estado em que

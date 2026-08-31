@@ -13,13 +13,32 @@ const Renderer = (() => {
   // nao como fundo inteiro — senao cada pagina vira de uma familia visual.
   const NAVY = '#1B3A6B';
 
+  // Veu escuro sobre a foto da capa, para o titulo continuar legivel. Fica numa
+  // constante porque `resolverArquivos` remonta o mesmo fundo depois de assinar.
+  const VEU = 'linear-gradient(180deg, rgba(20,41,75,.25), rgba(20,41,75,.88))';
+
+  // 1x1 transparente: segura o lugar da imagem ate a URL assinada chegar, sem
+  // o icone de imagem quebrada piscando na tela.
+  const VAZIO = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+  // O bucket e PRIVADO: o que esta gravado em `conteudo` e o CAMINHO do
+  // arquivo, nao uma URL. Endereco externo (o que alguem colou a mao) passa
+  // direto; caminho vira `data-mag-arquivo` e espera a assinatura.
+  function _ehExterno(src) { return /^(https?:|data:|blob:)/i.test(String(src || '')); }
+
   // ── Helpers compartilhados ──────────────────────────────
   function _hero(c, height = 220) {
     const cor = c.tagCor || NAVY;
-    const bg = c.heroBg
-      ? `background:linear-gradient(180deg, rgba(20,41,75,.25), rgba(20,41,75,.88)), url('${_esc(c.heroBg)}') center/cover`
-      : `background:linear-gradient(140deg, ${NAVY} 0%, #24487F 58%, ${cor} 190%)`;
-    return `<div class="rp-hero" style="${bg};min-height:${height}px">
+    const semFoto = `background:linear-gradient(140deg, ${NAVY} 0%, #24487F 58%, ${cor} 190%)`;
+    let bg = semFoto, aguarda = '';
+    if (c.heroBg && _ehExterno(c.heroBg)) {
+      bg = `background:${VEU}, url('${_esc(c.heroBg)}') center/cover`;
+    } else if (c.heroBg) {
+      // Fica no degrade ate a assinatura chegar — o texto continua legivel
+      // nesse meio-tempo, que e o motivo de nao deixar o fundo vazio.
+      aguarda = ` data-mag-fundo="${_esc(c.heroBg)}"`;
+    }
+    return `<div class="rp-hero"${aguarda} style="${bg};min-height:${height}px">
       ${c.tag ? `<span class="rp-tag" style="background:${cor}">${_esc(c.tag)}</span>` : ''}
       ${c.titulo ? `<h1 class="rp-title">${_esc(c.titulo)}</h1>` : ''}
       ${c.subtitulo ? `<p class="rp-subtitle">${_esc(c.subtitulo)}</p>` : ''}
@@ -31,7 +50,10 @@ const Renderer = (() => {
     if (!items || !items.length) return '';
     return `<div class="rp-gallery" style="grid-template-columns:repeat(${cols},1fr)">
       ${items.map((src) => `<div class="rp-gallery-item">
-        <img src="${_esc(src)}" alt="" loading="lazy"></div>`).join('')}
+        <img ${_ehExterno(src)
+                ? `src="${_esc(src)}"`
+                : `src="${VAZIO}" data-mag-arquivo="${_esc(src)}"`
+              } alt="" loading="lazy"></div>`).join('')}
     </div>`;
   }
 
@@ -127,5 +149,47 @@ const Renderer = (() => {
     return `<div class="rp-page-inner">${fn(pagina.conteudo || {})}</div>`;
   }
 
-  return { renderPagina };
+  /**
+   * Troca os caminhos de arquivo por URLs assinadas, DEPOIS que o HTML entrou
+   * na tela. O renderizador e sincrono de proposito (ele so monta texto), e
+   * assinar exige ida ao servidor — separar as duas coisas e o que permite a
+   * pagina aparecer inteira antes de as fotos chegarem.
+   *
+   * ⚠️ Assina TUDO de uma vez. Uma chamada por imagem faria a galeria de 12
+   * fotos virar 12 requisicoes, e a revista reassinaria a cada virada de
+   * pagina (o cache de `Api.storage` cobre a repeticao).
+   *
+   * Falha aqui NAO derruba a pagina: o texto e o que a revista tem de
+   * essencial. O que nao assinou fica sem foto e sai no console dizendo qual.
+   */
+  async function resolverArquivos(container) {
+    if (!container) return;
+    const imgs  = [...container.querySelectorAll('img[data-mag-arquivo]')];
+    const capas = [...container.querySelectorAll('[data-mag-fundo]')];
+    if (!imgs.length && !capas.length) return;
+
+    const caminhos = [
+      ...imgs.map((el) => el.dataset.magArquivo),
+      ...capas.map((el) => el.dataset.magFundo),
+    ].filter(Boolean);
+
+    let urls = {};
+    try { urls = await Api.storage.assinar(caminhos); }
+    catch (err) { console.error('[renderer] falha ao assinar arquivos', err); return; }
+
+    imgs.forEach((el) => {
+      const u = urls[el.dataset.magArquivo];
+      if (!u) return;                       // sem URL: fica o vazio, nao um link quebrado
+      el.src = u;
+      delete el.dataset.magArquivo;         // ja resolvido; nao reassina
+    });
+    capas.forEach((el) => {
+      const u = urls[el.dataset.magFundo];
+      if (!u) return;                       // sem URL: continua no degrade
+      el.style.background = `${VEU}, url('${u}') center/cover`;
+      delete el.dataset.magFundo;
+    });
+  }
+
+  return { renderPagina, resolverArquivos };
 })();

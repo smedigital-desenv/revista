@@ -126,12 +126,39 @@ escolar — criança identificável. Bucket público entrega o arquivo a quem ti
 URL, sem passar pelo login da rede, enquanto a revista inteira vive atrás do
 central.
 
-⚠️ **PENDÊNCIA CONHECIDA:** `js/api.js` ainda usa `getPublicUrl`, que não
-funciona em bucket privado. Trocar por `createSignedUrl` **não basta**: a URL
-assinada expira, e hoje o editor grava a URL dentro de `paginas.conteudo`
-(`galeria`, `heroBg`, `videoUrl`). O certo é gravar o **caminho** e assinar na
-hora de renderizar — o que mexe em `js/renderer.js`. Enquanto isso não for
-feito, as imagens não carregam fora do modo demonstração.
+### Como a foto chega à tela
+
+⚠️ **O que se grava em `paginas.conteudo` é o CAMINHO do arquivo, nunca a URL.**
+A URL assinada expira em 1 h; gravada no banco, viraria link quebrado no dia
+seguinte — e o sintoma (foto sumida numa página antiga) não apontaria para a
+causa. O editor guarda o caminho (`js/views/editor.js`, `doUpload`).
+
+Quem transforma caminho em URL é `Renderer.resolverArquivos(container)`, **depois**
+que o HTML entrou na tela:
+
+1. `renderer.js` é síncrono de propósito — só monta texto. Caminho de arquivo
+   vira `data-mag-arquivo` (imagem) ou `data-mag-fundo` (capa), com um GIF 1×1
+   transparente segurando o lugar, para não piscar ícone de imagem quebrada.
+2. Endereço externo (`http:`, `data:`, `blob:` — o que alguém colou à mão)
+   passa direto para o `src`, sem assinatura.
+3. `resolverArquivos` junta **todos** os caminhos daquele container e assina
+   numa chamada só. Uma por imagem faria a galeria de 12 fotos virar 12
+   requisições, e a revista reassinaria a cada virada de página.
+4. `Api.storage.assinar` guarda as assinaturas em memória enquanto valem
+   (1 h, com 10 min de margem), então a repetição não custa rede.
+
+⚠️ **Falha ao assinar NÃO derruba a página.** O texto é o essencial da revista:
+o que não assinou fica sem foto e sai no console dizendo qual arquivo foi. Um
+caminho que o Supabase recusa individualmente também é pulado, em vez de virar
+link quebrado.
+
+Chamam o resolvedor: `views/revista.js` (primeiro render e cada virada de
+página) e `views/editor.js` (primeiro render e cada atualização da
+pré-visualização). **Tela nova que renderize página tem de chamar também** —
+senão as fotos ficam no placeholder, sem erro nenhum.
+
+⚠️ `conteudo.videoUrl` continua sendo endereço externo (YouTube). Vídeo enviado
+ao bucket ainda não é exibido por nenhum layout.
 
 ## Verificação (rode depois de qualquer mudança de esquema)
 
@@ -191,6 +218,15 @@ secretaria, duas de unidades diferentes):
   (ela alcança tudo por `minhas_unidades()`); escola inexistente **não inventa**
   unidade.
 
+O caminho da foto foi exercitado em navegador headless, com a assinatura
+substituída por uma de mentira: endereço externo passa intacto; três caminhos
+(duas fotos + a capa) viram **uma** chamada em lote; nada fica pendente ao fim;
+a capa sai com véu + URL assinada; e, quando a assinatura falha, o texto
+continua na tela sem imagem quebrada.
+
 ⚠️ Isso prova que a regra faz o que diz. **Não prova** que o catálogo do dia
 cobre as grafias que o central manda — isso só se vê com dado real, e é o que
-justifica preencher `escola_central_id` em vez de confiar no nome.
+justifica preencher `escola_central_id` em vez de confiar no nome. Também não
+prova nada contra o projeto real: o ambiente onde este código foi escrito não
+alcança `supabase.co`, então a primeira execução do schema e a primeira
+assinatura de arquivo de verdade acontecem no seu lado.

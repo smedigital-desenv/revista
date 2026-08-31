@@ -97,6 +97,9 @@ const EditorView = (() => {
         </div>
       </aside>
     </div>`;
+
+    // Primeiro render: as fotos entram por caminho e precisam ser assinadas.
+    Renderer.resolverArquivos(document.getElementById('editor-preview'));
   }
 
   // ── Helpers de estado ───────────────────────────────────
@@ -238,7 +241,10 @@ const EditorView = (() => {
 
   function _refreshPreview() {
     const el = document.getElementById('editor-preview');
-    if (el) el.innerHTML = Renderer.renderPagina(_cur());
+    if (el) {
+      el.innerHTML = Renderer.renderPagina(_cur());
+      Renderer.resolverArquivos(el);   // bucket privado: caminho -> URL assinada
+    }
   }
 
   // ── Navegação entre páginas ─────────────────────────────
@@ -368,23 +374,27 @@ const EditorView = (() => {
     const input = document.getElementById('ed-file-input');
     const status = document.getElementById('ed-upload-status');
     if (!input?.files?.length) { UI.toast('Selecione ao menos um arquivo.', 'error'); return; }
-    const urls = [];
+    // ⚠️ Guarda o CAMINHO, não a URL. A URL assinada expira em 1 h; gravada no
+    // banco, viraria link quebrado no dia seguinte — e o sintoma (foto sumida
+    // em página antiga) não apontaria para a causa. Quem assina na hora de
+    // exibir é `Renderer.resolverArquivos`.
+    const caminhos = [];
     for (const file of input.files) {
       status.textContent = `Enviando ${file.name}...`;
       try {
-        const { url } = await Api.storage.uploadArquivo(_s.params.unidadeId, _s.params.temaId, tipo, file);
-        urls.push(url);
+        const { path } = await Api.storage.uploadArquivo(_s.params.unidadeId, _s.params.temaId, tipo, file);
+        caminhos.push(path);
       } catch (err) { UI.toast(`${file.name}: ${err.message}`, 'error'); }
     }
-    if (urls.length && tipo === 'fotos') {
+    if (caminhos.length && tipo === 'fotos') {
       _cur().conteudo = _cur().conteudo || {};
-      _cur().conteudo.galeria = [...(_cur().conteudo.galeria || []), ...urls];
+      _cur().conteudo.galeria = [...(_cur().conteudo.galeria || []), ...caminhos];
       _s.dirty = true;
       _refreshPreview();
       document.getElementById('ed-fields').innerHTML = _renderFields();
     }
     UI.closeModal();
-    UI.toast(`${urls.length} arquivo(s) enviado(s).`, 'success');
+    UI.toast(`${caminhos.length} arquivo(s) enviado(s).`, 'success');
   }
 
   return {

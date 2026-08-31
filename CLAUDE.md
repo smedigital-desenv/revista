@@ -24,10 +24,9 @@ que está publicado hoje. Para sair disso, o passo a passo está no topo do
 `config.js` e no README — e a ordem importa: banco, ponte, cadastro no central,
 credenciais, e só então `DEMO_MODE = false`.
 
-⚠️ **Pendência que quebra o não-demo:** `js/api.js` usa `getPublicUrl`, e o
-bucket é privado (foto de criança). Ver a seção Storage de `docs/BANCO.md` —
-trocar por URL assinada exige gravar o **caminho** em `paginas.conteudo` e
-assinar na hora de renderizar, o que mexe em `js/renderer.js`.
+O projeto Supabase da revista é o `msutitbaewkpjtgvcfew`; a URL e a chave
+`anon` já estão no `config.js`. Falta rodar o `db/schema.sql` nele e publicar a
+`central-bridge` — só então `DEMO_MODE` pode virar `false`.
 
 ## Como o acesso funciona
 
@@ -50,6 +49,10 @@ sistema funcionando.
 - **`paginas.inscricao_id` não é decorativo** — a listagem do tema passa por
   dentro de `inscricoes`, e página sem ele some da tela sem erro. Um trigger o
   preenche; não o remova.
+- **O bucket é privado: `conteudo` guarda o CAMINHO da foto, nunca a URL.** URL
+  assinada expira em 1 h e viraria link quebrado gravada no banco. Quem assina
+  é `Renderer.resolverArquivos`, depois do render — e toda tela que renderizar
+  página precisa chamá-lo. Ver a seção Storage de `docs/BANCO.md`.
 - **Ao mexer em `css/` ou `js/`, suba o `?v=` do `index.html` e o
   `CONFIG.APP_VERSION`** — senão o navegador serve o arquivo velho do cache e o
   deploy parece não ter mudado nada.

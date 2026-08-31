@@ -220,12 +220,16 @@ const MockApi = (() => {
 
   const storage = {
     _basePath: (u, t, tipo) => `unidades/${u}/${t}/${tipo}`,
-    publicUrl: (path) => path,
+    // Mesmo contrato do storage real. Na demonstração o "caminho" já é uma URL
+    // (objectURL do arquivo escolhido), então assinar é devolver o que veio.
+    assinar: async (paths) => Object.fromEntries((paths || []).map((p) => [p, p])),
     listarArquivos: async () => [],
     uploadArquivo: async (_u, _t, _tipo, file) => {
-      // gera uma URL local temporária só para preview
+      // Na demonstração o "caminho" É a URL local do arquivo escolhido: assim o
+      // renderer a reconhece como endereço externo e mostra a foto na hora.
+      // Devolver o nome do arquivo aqui deixaria a galeria vazia na demo.
       const url = (window.URL || window.webkitURL).createObjectURL(file);
-      return { path: file.name, url };
+      return { path: url, url };
     },
   };
 

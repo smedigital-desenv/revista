@@ -241,23 +241,69 @@ const Api = (() => {
   };
 
   // ── Storage ─────────────────────────────────────────────
-  // ⚠️ PENDÊNCIA CONHECIDA — não funciona fora do modo demonstração.
-  // O bucket `portfolio-mag` é PRIVADO de propósito (foto de atividade
-  // escolar, criança identificável), e `getPublicUrl` não vale em bucket
-  // privado. Trocar por `createSignedUrl` NÃO basta: a URL assinada expira, e
-  // hoje o editor grava a URL dentro de `paginas.conteudo` (galeria, heroBg,
-  // videoUrl). O certo é gravar o CAMINHO e assinar na hora de renderizar — o
-  // que mexe em js/renderer.js. Ver a seção Storage de docs/BANCO.md.
+  // O bucket `portfolio-mag` é PRIVADO (foto de atividade escolar, criança
+  // identificável), então não existe URL pública: o acesso é por URL ASSINADA,
+  // que expira.
+  //
+  // ⚠️ Por isso o que se GRAVA em `paginas.conteudo` é o CAMINHO, nunca a URL.
+  // URL assinada gravada no banco vira link quebrado no dia seguinte, e o
+  // sintoma (imagem sumida em página antiga) não aponta para a causa.
+  // Quem transforma caminho em URL na hora de exibir é `Renderer.resolverArquivos`.
   const storage = {
     _basePath: (unidadeId, temaId, tipo) => `unidades/${unidadeId}/${temaId}/${tipo}`,
 
-    publicUrl: (path) => _sb().storage.from(CONFIG.STORAGE_BUCKET).getPublicUrl(path).data.publicUrl,
+    // Assinaturas ficam em memória enquanto valem. Sem isto, cada virada de
+    // página da revista assinaria de novo os mesmos arquivos.
+    _cache: new Map(),
+    VALIDADE: 3600,          // 1 h — o que a URL assinada dura
+    _MARGEM: 600,            // reassina 10 min antes de expirar
+
+    /**
+     * Assina vários caminhos de uma vez.
+     * @param {string[]} paths
+     * @returns {Promise<Object<string,string>>} caminho -> URL assinada
+     */
+    assinar: async (paths) => {
+      const agora = Date.now();
+      const saida = {};
+      const faltando = [];
+
+      for (const p of paths || []) {
+        if (!p) continue;
+        const c = storage._cache.get(p);
+        if (c && c.ate > agora) saida[p] = c.url;
+        else if (!faltando.includes(p)) faltando.push(p);
+      }
+      if (!faltando.length) return saida;
+
+      const { data, error } = await _sb().storage
+        .from(CONFIG.STORAGE_BUCKET)
+        .createSignedUrls(faltando, storage.VALIDADE);
+      if (error) throw new Error(error.message);
+
+      const ate = agora + (storage.VALIDADE - storage._MARGEM) * 1000;
+      (data || []).forEach((d) => {
+        // Um caminho que falhou vem com `error` preenchido e sem URL. Ele fica
+        // de fora do resultado — quem chamou mostra o buraco em vez de um link
+        // quebrado, e o console diz qual arquivo foi.
+        if (d.error || !d.signedUrl) {
+          console.warn('[storage] não assinou', d.path, d.error);
+          return;
+        }
+        saida[d.path] = d.signedUrl;
+        storage._cache.set(d.path, { url: d.signedUrl, ate });
+      });
+      return saida;
+    },
 
     listarArquivos: async (unidadeId, temaId, tipo) => {
-      const path = storage._basePath(unidadeId, temaId, tipo);
-      const { data, error } = await _sb().storage.from(CONFIG.STORAGE_BUCKET).list(path, { limit: 100 });
+      const base = storage._basePath(unidadeId, temaId, tipo);
+      const { data, error } = await _sb().storage
+        .from(CONFIG.STORAGE_BUCKET).list(base, { limit: 100 });
       if (error) throw new Error(error.message);
-      return (data || []).map((f) => ({ ...f, url: storage.publicUrl(`${path}/${f.name}`) }));
+      const arquivos = (data || []).map((f) => ({ ...f, path: `${base}/${f.name}` }));
+      const urls = await storage.assinar(arquivos.map((f) => f.path));
+      return arquivos.map((f) => ({ ...f, url: urls[f.path] || null }));
     },
 
     uploadArquivo: async (unidadeId, temaId, tipo, file) => {
@@ -265,7 +311,10 @@ const Api = (() => {
       const { error } = await _sb().storage.from(CONFIG.STORAGE_BUCKET)
         .upload(path, file, { cacheControl: '3600', upsert: false });
       if (error) throw new Error(error.message);
-      return { path, url: storage.publicUrl(path) };
+      const urls = await storage.assinar([path]);
+      // `path` é o que vai para o banco; `url` serve só para a pré-visualização
+      // imediata, e expira.
+      return { path, url: urls[path] || null };
     },
   };
 

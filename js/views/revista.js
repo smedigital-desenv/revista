@@ -47,6 +47,8 @@ const RevistaView = (() => {
     </div>`;
 
     _updateControls();
+    // Primeiro render: as fotos entram por caminho e precisam ser assinadas.
+    Renderer.resolverArquivos(document.getElementById('rev-page'));
   }
 
   function _params() {
@@ -76,6 +78,7 @@ const RevistaView = (() => {
     _state.current = next;
     const el = document.getElementById('rev-page');
     el.innerHTML = _pageHtml();
+    Renderer.resolverArquivos(el);   // bucket privado: caminho -> URL assinada
     _animateFlip(el);
     _updateControls();
   }
@@ -85,6 +88,7 @@ const RevistaView = (() => {
     _state.current = idx;
     const el = document.getElementById('rev-page');
     el.innerHTML = _pageHtml();
+    Renderer.resolverArquivos(el);   // bucket privado: caminho -> URL assinada
     _animateFlip(el);
     _updateControls();
   }
