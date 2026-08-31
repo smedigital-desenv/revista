@@ -130,6 +130,13 @@ const CentralSME = (() => {
     window.CentralTempos = { ...tempos, total };
     (total > 4000 ? console.warn : console.log)('[central] tempos (ms)', window.CentralTempos);
 
+    // Papel que o central mandou × o que o banco espera para dar administração.
+    // Divergindo, a pessoa entra como unidade e a tela some sem explicar por quê.
+    if (String(resp.papel || '').toLowerCase() !== 'secretaria') {
+      console.log('[central] papel neste sistema:', resp.papel,
+        '— administração exige exatamente "secretaria".');
+    }
+
     if (!resp.sincronizado) {
       // A sessão vale, mas o espelho de identidade não foi atualizado. O sintoma
       // é tela vazia sem erro — então diz-se aqui, e não no silêncio.

@@ -256,6 +256,14 @@ Deno.serve(async (req) => {
       email: alvo,
       simulando: alvo !== email ? email : null,
       sincronizado: !sync.error,
+      // ⚠️ Devolvido para DIAGNÓSTICO, não para o front decidir nada.
+      // Quem administra a revista é decidido no banco (`sincronizar_do_central`
+      // compara este valor com 'secretaria'), e o contrato do central não diz
+      // se `papel` traz o slug ou o nome do papel. Vindo o nome, ninguém seria
+      // secretaria e a Secretaria inteira entraria como unidade — falha que se
+      // parece com "o sistema não funciona", não com "o papel está errado".
+      // Com o valor aqui, o primeiro login já mostra qual é.
+      papel: sistemaAlvo?.papel ?? null,
     });
   } catch (e) {
     console.error('[central-bridge] excecao', e instanceof Error ? e.stack : String(e));
