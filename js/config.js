@@ -1,18 +1,29 @@
 /* ============================================================
    config.js — constantes globais do Portfolio MAG
-   SUBSTITUA SUPABASE_URL e SUPABASE_ANON_KEY pelos do seu projeto.
-   (a anon key é segura no client — protegida por RLS)
+
+   PARA SAIR DA DEMONSTRAÇÃO, nesta ordem:
+     1. criar o projeto Supabase da revista e rodar db/schema.sql nele;
+     2. publicar a Edge Function `central-bridge` com --no-verify-jwt;
+     3. cadastrar o sistema 'revista' no catálogo do CENTRAL (tabela sistemas)
+        e liberar para os perfis — sem isso a ponte responde 403;
+     4. preencher SUPABASE_URL e SUPABASE_ANON_KEY abaixo;
+     5. virar DEMO_MODE para false e subir o APP_VERSION + o ?v= do index.html.
+
+   A anon key é segura no client — a proteção real é o RLS. A `service_role`
+   NUNCA entra aqui: este repositório é público.
    ============================================================ */
 const CONFIG = {
   SUPABASE_URL:      'https://xxxxxxxxxxx.supabase.co',
   SUPABASE_ANON_KEY: 'COLE_SUA_ANON_KEY_AQUI',
 
   // MODO DEMONSTRAÇÃO — sem login, dados de exemplo na memória (js/mock.js).
-  // Coloque false depois de criar o banco no Supabase e preencher as credenciais acima.
+  // Com `true`, NADA do central é carregado e nada é gravado: é o estado em que
+  // o site fica no ar enquanto o projeto Supabase não existe. Ver o passo a
+  // passo no topo deste arquivo.
   DEMO_MODE: true,
 
   APP_TITLE:   'Portfolio MAG',
-  APP_VERSION: '1.2.1',   // mantenha igual ao ?v= das tags de index.html
+  APP_VERSION: '1.3.0',   // mantenha igual ao ?v= das tags de index.html
 
   CACHE_TTL: {
     CONFIG:    21600,   // 6h

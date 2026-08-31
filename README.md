@@ -21,9 +21,11 @@ js/
   ui.js               toast, modal, componentes
   router.js           SPA router + breadcrumb
   renderer.js         6 layouts de página
-  app.js              inicialização + fluxo de auth
+  central.js          entrada pelo Controle de Acesso CENTRAL (+ central-bridge)
+  app.js              inicialização + fluxo de acesso
   views/              secretaria, tema, revista, editor, admin
-sql/schema.sql        banco completo + RLS + storage + seed
+docs/BANCO.md         desenho do banco, decisões e armadilhas
+supabase/functions/central-bridge/   Edge Function que abre a sessão da revista
 .github/workflows/deploy.yml   deploy automático
 ```
 
@@ -31,39 +33,68 @@ sql/schema.sql        banco completo + RLS + storage + seed
 
 ## Configuração (passo a passo)
 
-### 1. Supabase
-1. Crie um projeto em https://supabase.com.
-2. Em **SQL Editor**, cole e rode `sql/schema.sql` inteiro.
-3. Em **Authentication → Providers → Google**, ative e informe Client ID + Secret
-   (crie no Google Cloud Console; redirect URI: `https://<seu-projeto>.supabase.co/auth/v1/callback`).
-4. Em **Authentication → URL Configuration**, adicione em *Redirect URLs* a URL do seu
-   GitHub Pages, ex: `https://seu-usuario.github.io/revista/`.
-5. O bucket `portfolio-mag` é criado pelo `schema.sql`. Confirme em **Storage** que está público.
+> Enquanto `CONFIG.DEMO_MODE` for `true`, o app roda com dados de exemplo em
+> memória (`js/mock.js`), sem banco e sem login. É o estado publicado hoje.
 
-### 2. config.js
-Edite `js/config.js` e substitua:
+### 1. Banco (Supabase)
+1. Crie um projeto em https://supabase.com — este é o projeto **da revista**,
+   separado do projeto do central.
+2. Em **SQL Editor**, cole e rode `db/schema.sql` inteiro.
+
+   ⚠️ Esse arquivo **não está no repositório e não deve estar**: aqui tudo é
+   público e o site é servido da raiz, então um `.sql` commitado vira URL
+   baixável. Ele é entregue fora do Git e vive no Supabase. O desenho está em
+   [`docs/BANCO.md`](docs/BANCO.md).
+3. Confirme em **Storage** que o bucket `portfolio-mag` está **privado**. Ele
+   guarda foto de atividade escolar — bucket público entregaria o arquivo a
+   quem tivesse a URL, sem passar pelo login da rede.
+
+### 2. Login pelo CENTRAL
+A revista **não tem login próprio**: quem autentica é o Controle de Acesso
+CENTRAL. Como este é outro projeto Supabase, é preciso a ponte.
+
+1. Publique a Edge Function, com a verificação de JWT **desligada** — o token
+   que chega é de outro projeto e o Supabase o rejeitaria antes da função rodar:
+   ```bash
+   supabase functions deploy central-bridge --no-verify-jwt
+   ```
+2. No banco do **central**, cadastre o sistema `revista` na tabela `sistemas` e
+   libere-o aos perfis. Sem isso a ponte responde `403 sem_acesso_a_revista` —
+   e o sintoma não diz isso, aparece como "sem acesso" na tela.
+3. Quem administra a revista precisa do papel `secretaria` no sistema `revista`
+   (ou ser super admin do central). Qualquer outro papel edita só a própria
+   unidade.
+
+### 3. Unidades
+Cadastre cada escola em `unidades` com o `escola_central_id` **do catálogo do
+central**. É por esse id que a ponte descobre quem edita o quê; o nome é só
+caminho reserva, e casa por igualdade normalizada.
+
+### 4. config.js
 ```js
 SUPABASE_URL:      'https://SEU-PROJETO.supabase.co',
 SUPABASE_ANON_KEY: 'sua anon key (Settings → API)',
+DEMO_MODE:         false,
 ```
-> A `anon key` é segura no client — a proteção real está no RLS. **Nunca** commite a `service_role key`.
+> A `anon key` é segura no client — a proteção real é o RLS. **Nunca** commite a
+> `service_role key`.
 
-### 3. Primeiro administrador
-1. Faça o primeiro login com Google no app (vai cair em "Sem acesso" — normal).
-2. No SQL Editor, rode o bloco final do `schema.sql` (seção 15) com o e-mail real do admin
-   para promovê-lo a `secretaria`.
-3. Recarregue o app.
+### 5. Deploy (GitHub Pages)
+Cada push na `main` publica via `.github/workflows/deploy.yml`.
 
-### 4. Deploy (GitHub Pages)
-1. Crie o repositório e dê push.
-2. Em **Settings → Pages**, selecione *Source: GitHub Actions*.
-3. Cada push na branch `main` publica automaticamente via `.github/workflows/deploy.yml`.
+⚠️ **Push feito por automação não dispara o workflow** — rode-o à mão pela aba
+Actions. E confirme por hash, não pela mensagem:
+```bash
+git fetch origin -q && git rev-parse --short origin/main
+```
+
+⚠️ **A Edge Function não vai junto no deploy do site.** Alterá-la exige
+republicar pela CLI. Front-end e função desalinhados produzem erro que não
+parece versão.
 
 > **Ao mexer em `css/` ou `js/`, suba o `?v=` das tags do `index.html`** (e o
-> `CONFIG.APP_VERSION`, que existe só para lembrar da versão em uso). Sem isso o
-> navegador serve o arquivo antigo do cache e o deploy parece não ter mudado nada.
-
----
+> `CONFIG.APP_VERSION`). Sem isso o navegador serve o arquivo antigo do cache e
+> o deploy parece não ter mudado nada.
 
 ## Desenvolvimento local
 Como é estático, basta um servidor HTTP:
@@ -78,8 +109,12 @@ Acesse http://localhost:8000 e adicione `http://localhost:8000` nas *Redirect UR
 ## Perfis
 | Perfil | Permissões |
 |---|---|
-| `secretaria` | Tudo: temas, inscrições, publicação, usuários |
-| `unidade` | Edita páginas da própria unidade, solicita inscrição, envia para revisão |
+| `secretaria` | Temas, inscrições, publicação e aprovação na revista principal |
+| `unidade` | Edita páginas da própria unidade, solicita inscrição, envia para avaliação |
+
+O perfil **não é editado aqui**: ele vem do central a cada acesso (super admin
+ou papel `secretaria` no sistema `revista`). Mudança de acesso acontece no
+central.
 
 ## Fluxo
 Secretaria cria tema → unidade solicita inscrição → secretaria aprova → unidade cria/edita

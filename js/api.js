@@ -241,6 +241,13 @@ const Api = (() => {
   };
 
   // ── Storage ─────────────────────────────────────────────
+  // ⚠️ PENDÊNCIA CONHECIDA — não funciona fora do modo demonstração.
+  // O bucket `portfolio-mag` é PRIVADO de propósito (foto de atividade
+  // escolar, criança identificável), e `getPublicUrl` não vale em bucket
+  // privado. Trocar por `createSignedUrl` NÃO basta: a URL assinada expira, e
+  // hoje o editor grava a URL dentro de `paginas.conteudo` (galeria, heroBg,
+  // videoUrl). O certo é gravar o CAMINHO e assinar na hora de renderizar — o
+  // que mexe em js/renderer.js. Ver a seção Storage de docs/BANCO.md.
   const storage = {
     _basePath: (unidadeId, temaId, tipo) => `unidades/${unidadeId}/${temaId}/${tipo}`,
 

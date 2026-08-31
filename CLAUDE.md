@@ -3,9 +3,56 @@
 > **Este arquivo é lido automaticamente por qualquer sessão do Claude Code
 > neste repositório.** Leia antes de mexer em qualquer coisa.
 
-Publicação digital da secretaria.
+Revista digital das unidades escolares: a Secretaria cria temas, a escola pede
+inscrição, publica páginas na revista **dela** e pode enviá-las para a revista
+**principal**, que a SME aprova.
 
-Publicado em `smedigital.com.br/revista/` pelo GitHub Pages.
+| | |
+|---|---|
+| **Slug no central** | `revista` |
+| **Publicado em** | `smedigital.com.br/revista/` |
+| **Banco** | Supabase próprio — desenho em [`docs/BANCO.md`](docs/BANCO.md) |
+| **Telas** | Início (temas), Tema, Revista (folheio), Editor, Admin |
+
+Site estático (HTML/JS puro, sem framework nem build), SPA de um arquivo só.
+
+## ⚠️ O sistema ainda roda em MODO DEMONSTRAÇÃO
+
+`CONFIG.DEMO_MODE = true` em `js/config.js`, e nesse estado **todo o `Api`
+delega para `js/mock.js`**: nada persiste, nada de central, nada de banco. É o
+que está publicado hoje. Para sair disso, o passo a passo está no topo do
+`config.js` e no README — e a ordem importa: banco, ponte, cadastro no central,
+credenciais, e só então `DEMO_MODE = false`.
+
+⚠️ **Pendência que quebra o não-demo:** `js/api.js` usa `getPublicUrl`, e o
+bucket é privado (foto de criança). Ver a seção Storage de `docs/BANCO.md` —
+trocar por URL assinada exige gravar o **caminho** em `paginas.conteudo` e
+assinar na hora de renderizar, o que mexe em `js/renderer.js`.
+
+## Como o acesso funciona
+
+Não há login próprio. Quem autentica é o **central**; como a revista tem banco
+Supabase próprio, a sessão daqui é aberta pela Edge Function `central-bridge`
+(`supabase/functions/central-bridge/`), chamada por `js/central.js`.
+
+`usuarios` e `usuario_unidades` são **espelho** do central, escritos só pela
+ponte com `service_role`. Para `authenticated` não há escrita nenhuma — nem no
+RLS, nem no grant. **Mudança de acesso acontece no central, não aqui.**
+
+⚠️ Antes de "consertar" um `403` neste banco, leia `docs/BANCO.md`: as
+restrições foram postas de propósito e um `permission denied` vindo delas é o
+sistema funcionando.
+
+## Armadilhas específicas deste repositório
+
+- **O script do banco (`db/schema.sql`) não é versionado, e não deve ser.** Ele
+  vive no Supabase; `docs/BANCO.md` é a especificação versionada.
+- **`paginas.inscricao_id` não é decorativo** — a listagem do tema passa por
+  dentro de `inscricoes`, e página sem ele some da tela sem erro. Um trigger o
+  preenche; não o remova.
+- **Ao mexer em `css/` ou `js/`, suba o `?v=` do `index.html` e o
+  `CONFIG.APP_VERSION`** — senão o navegador serve o arquivo velho do cache e o
+  deploy parece não ter mudado nada.
 ---
 
 ## Regras da rede SME — valem para TODOS os sistemas
