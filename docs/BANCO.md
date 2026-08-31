@@ -35,6 +35,26 @@ validação é feita por dentro, e é por isso que ela é feita três vezes
 ⚠️ **A checagem de permissão é refeita no servidor de propósito.** O gate do
 navegador é conforto, não segurança: qualquer pessoa pode chamar a função direto.
 
+### Quanto demora abrir a sessão — MEDIDO em produção (2026-08-31)
+
+| situação | tempo da ponte |
+|---|---|
+| função dormindo (partida a frio) | ~6,4 s |
+| aquecimento parcial | ~4,0 s |
+| **em uso (o normal)** | **~1,7 s** |
+
+⚠️ **Não "otimize" a ponte com base no primeiro número.** Ele é partida a frio da
+Edge Function, e o estado normal está bem abaixo do limiar de 4 s em que as
+pessoas recarregam. Chegou-se a desenhar duas melhorias — inverter
+`createUser`/`generateLink` (hoje a primeira sempre falha para quem já existe) e
+rodar a sincronização em paralelo com o grant de senha. Elas continuam válidas
+como ideia, mas não se justificavam: o custo é mais um deploy da função e risco
+novo num caminho que já funciona.
+
+O que sobra é inerente: a primeira pessoa a entrar depois de horas paradas
+espera a função acordar. `js/central.js` mede e imprime cada perna no console —
+é por ali que se investiga, nunca no olho.
+
 ## `usuarios` e `usuario_unidades` são ESPELHO, não cadastro
 
 As duas tabelas são escritas **só pela ponte**, com `service_role`. Para
