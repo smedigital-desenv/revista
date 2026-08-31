@@ -3,9 +3,81 @@
 > **Este arquivo é lido automaticamente por qualquer sessão do Claude Code
 > neste repositório.** Leia antes de mexer em qualquer coisa.
 
-Publicação digital da secretaria.
+Revista digital das unidades escolares: a Secretaria cria temas, a escola pede
+inscrição, publica páginas na revista **dela** e pode enviá-las para a revista
+**principal**, que a SME aprova.
 
-Publicado em `smedigital.com.br/revista/` pelo GitHub Pages.
+| | |
+|---|---|
+| **Slug no central** | `revista` |
+| **Publicado em** | `smedigital.com.br/revista/` |
+| **Banco** | Supabase próprio — desenho em [`docs/BANCO.md`](docs/BANCO.md) |
+| **Telas** | Início (temas), Tema, Revista (folheio), Editor, Admin |
+
+Site estático (HTML/JS puro, sem framework nem build), SPA de um arquivo só.
+
+## ⚠️ O sistema ainda roda em MODO DEMONSTRAÇÃO
+
+`CONFIG.DEMO_MODE = true` em `js/config.js`, e nesse estado **todo o `Api`
+delega para `js/mock.js`**: nada persiste, nada de central, nada de banco. É o
+que está publicado hoje. Para sair disso, o passo a passo está no topo do
+`config.js` e no README — e a ordem importa: banco, ponte, cadastro no central,
+credenciais, e só então `DEMO_MODE = false`.
+
+O projeto Supabase da revista é o `msutitbaewkpjtgvcfew`; a URL e a chave
+`anon` já estão no `config.js`. Falta rodar o `db/schema.sql` nele e publicar a
+`central-bridge` — só então `DEMO_MODE` pode virar `false`.
+
+## Como o acesso funciona
+
+Não há login próprio. Quem autentica é o **central**; como a revista tem banco
+Supabase próprio, a sessão daqui é aberta pela Edge Function `central-bridge`
+(`supabase/functions/central-bridge/`), chamada por `js/central.js`.
+
+`usuarios` e `usuario_unidades` são **espelho** do central, escritos só pela
+ponte com `service_role`. Para `authenticated` não há escrita nenhuma — nem no
+RLS, nem no grant. **Mudança de acesso acontece no central, não aqui.**
+
+⚠️ Antes de "consertar" um `403` neste banco, leia `docs/BANCO.md`: as
+restrições foram postas de propósito e um `permission denied` vindo delas é o
+sistema funcionando.
+
+## Diagnóstico: `teste-ponte.html`
+
+Página separada que exercita a integração com o central **sem depender de virar
+o `DEMO_MODE`** — o que quebraria a demonstração pública se algo estivesse
+errado. Ela é somente-leitura e mostra, passo a passo: sessão no central,
+sistema liberado, se o papel serve para administrar, se a ponte emite sessão, se
+o banco a reconhece, e se o catálogo de escolas do central é legível.
+
+É a primeira coisa a abrir quando alguém disser "não consigo entrar". Fica atrás
+do login do central como todo o resto, e pode ser apagada quando o sistema
+estiver estável.
+
+⚠️ Ela declara `window.ACESSO_TELA = null`. Sem isso o `acesso-sme.js` usaria o
+nome do arquivo como slug de tela (`teste-ponte`), que não existe no catálogo, e
+bloquearia a página com "sem permissão" — justamente a mensagem que atrapalha
+quem está diagnosticando.
+
+## Armadilhas específicas deste repositório
+
+- **O script do banco (`db/schema.sql`) não é versionado, e não deve ser.** Ele
+  vive no Supabase; `docs/BANCO.md` é a especificação versionada.
+- **`paginas.inscricao_id` não é decorativo** — a listagem do tema passa por
+  dentro de `inscricoes`, e página sem ele some da tela sem erro. Um trigger o
+  preenche; não o remova.
+- **Unidade sem `escola_central_id` não alcança ninguém.** O vínculo pessoa ×
+  unidade é casado por esse id (e, como reserva, por nome exatamente igual). O
+  sintoma de um id faltando é uma escola que ninguém consegue editar, sem erro
+  nenhum — por isso o painel Admin marca em vermelho quem está sem ele, e
+  **Importar do central** existe para o id vir certo por construção.
+- **O bucket é privado: `conteudo` guarda o CAMINHO da foto, nunca a URL.** URL
+  assinada expira em 1 h e viraria link quebrado gravada no banco. Quem assina
+  é `Renderer.resolverArquivos`, depois do render — e toda tela que renderizar
+  página precisa chamá-lo. Ver a seção Storage de `docs/BANCO.md`.
+- **Ao mexer em `css/` ou `js/`, suba o `?v=` do `index.html` e o
+  `CONFIG.APP_VERSION`** — senão o navegador serve o arquivo velho do cache e o
+  deploy parece não ter mudado nada.
 ---
 
 ## Regras da rede SME — valem para TODOS os sistemas

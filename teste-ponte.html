@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico da ponte — Portfolio MAG</title>
+<!--
+  ============================================================================
+  Página de DIAGNÓSTICO. Não faz parte do sistema: ela existe para conferir a
+  integração com o central sem depender de virar o `DEMO_MODE` do app — o que
+  quebraria a demonstração pública se algo estivesse errado.
+
+  Ela é somente-leitura: não grava nada, não altera nada. O único efeito
+  colateral é o que a própria ponte faz por natureza (criar/atualizar a linha
+  da pessoa em `usuarios`, que é o que se está testando).
+
+  ⚠️ Pode ser apagada quando o sistema estiver no ar. Enquanto existir, é a
+  primeira coisa a abrir quando alguém disser "não consigo entrar".
+  ============================================================================
+-->
+<style>
+  :root { --navy:#1B3A6B; --papel:#FBFAF5; --borda:#E4E0D6; --musgo:#7A7D2A;
+          --terra:#C2603F; --tinta:#2A2A28; --fraco:#6B6B63; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:var(--papel); color:var(--tinta);
+         font:15px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  .caixa { max-width:760px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 4px; color:var(--navy); }
+  .sub { color:var(--fraco); margin:0 0 20px; font-size:13px; }
+  .passo { display:flex; gap:12px; align-items:flex-start; padding:12px 14px;
+           border:1px solid var(--borda); border-radius:10px; background:#fff; margin-bottom:8px; }
+  .ic { flex:0 0 22px; font-size:17px; line-height:1.3; }
+  .txt { flex:1; min-width:0; }
+  .nome { font-weight:600; }
+  .det { font-size:13px; color:var(--fraco); margin-top:2px; word-break:break-word; }
+  .ok .ic  { color:var(--musgo); }
+  .mau .ic { color:var(--terra); }
+  .mau .nome { color:var(--terra); }
+  .esperando { opacity:.5; }
+  pre { background:#fff; border:1px solid var(--borda); border-radius:10px;
+        padding:12px; font-size:12px; overflow-x:auto; }
+  .rodape { margin-top:18px; font-size:13px; color:var(--fraco); }
+  button { font:inherit; padding:8px 14px; border-radius:8px; cursor:pointer;
+           border:1px solid var(--navy); background:var(--navy); color:#fff; }
+</style>
+</head>
+<body>
+<div class="caixa">
+  <h1>Diagnóstico da ponte</h1>
+  <p class="sub">Confere a integração da revista com o Controle de Acesso CENTRAL.
+     Não grava nada e não altera o sistema.</p>
+  <div id="passos"></div>
+  <div class="rodape">
+    <p>Se algum passo estiver em vermelho, é ele que impede o login. Mande esta
+       tela inteira para quem estiver acompanhando.</p>
+    <button onclick="location.reload()">Testar de novo</button>
+  </div>
+  <h2 style="font-size:15px;color:var(--navy);margin-top:22px">Detalhes técnicos</h2>
+  <pre id="bruto">aguardando...</pre>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js?v=1.3.0"></script>
+<script>
+(async () => {
+  const bruto = {};
+  const alvo = document.getElementById('passos');
+
+  function passo(nome, estado, detalhe) {
+    const ic = estado === 'ok' ? '✓' : estado === 'mau' ? '✕' : '…';
+    const div = document.createElement('div');
+    div.className = 'passo ' + (estado === 'esperando' ? 'esperando' : estado);
+    div.innerHTML = `<div class="ic">${ic}</div><div class="txt">
+      <div class="nome"></div><div class="det"></div></div>`;
+    div.querySelector('.nome').textContent = nome;
+    div.querySelector('.det').textContent = detalhe || '';
+    alvo.appendChild(div);
+    return {
+      ok:  (d) => { div.className = 'passo ok';  div.querySelector('.ic').textContent = '✓';
+                    div.querySelector('.det').textContent = d || ''; },
+      mau: (d) => { div.className = 'passo mau'; div.querySelector('.ic').textContent = '✕';
+                    div.querySelector('.det').textContent = d || ''; },
+    };
+  }
+
+  // O e-mail sai mascarado de propósito: esta tela é feita para ser
+  // fotografada e colada numa conversa, e endereço de servidor é dado pessoal.
+  const mascarar = (e) => {
+    const [a, b] = String(e || '').split('@');
+    return a ? a.slice(0, 2) + '***@' + (b || '') : '(sem e-mail)';
+  };
+
+  const p1 = passo('Carregar o módulo do central', 'esperando');
+  let A;
+  try {
+    window.ACESSO_SISTEMA = 'revista';
+    // ⚠️ Sem isto o acesso-sme.js usaria o NOME DO ARQUIVO como slug de tela
+    // ('teste-ponte'), que não existe no catálogo — e bloquearia a página com
+    // "sem permissão", que é exatamente a mensagem que confunde o diagnóstico.
+    window.ACESSO_TELA = null;
+    window.ACESSO_LOGIN = '/central/login.html';
+    const carregar = (src) => new Promise((ok, erro) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = ok; s.onerror = () => erro(new Error('não carregou ' + src));
+      document.head.appendChild(s);
+    });
+    await carregar('/central/config.js');
+    await carregar('/central/acesso-sme.js');
+    A = window.AcessoSME;
+    if (!A || !A.pronto) throw new Error('window.AcessoSME não apareceu.');
+    p1.ok('config.js e acesso-sme.js carregados.');
+  } catch (e) {
+    p1.mau(e.message);
+    document.getElementById('bruto').textContent = JSON.stringify({ erro: e.message }, null, 2);
+    return;
+  }
+
+  const p2 = passo('Sessão no central', 'esperando');
+  try {
+    await A.pronto;
+    if (!A.perfil) { p2.mau('Sem sessão no central — a página foi assumida por ele.'); return; }
+    bruto.perfil_central = { nome: A.perfil.nome, super_admin: !!A.perfil.is_super_admin,
+                             tipo: A.perfil.tipo };
+    p2.ok(`${A.perfil.nome || mascarar(A.perfil.email)}`
+        + (A.perfil.is_super_admin ? ' · super admin' : ''));
+  } catch (e) { p2.mau(e.message); return; }
+
+  const p3 = passo('Sistema "revista" liberado no central', 'esperando');
+  const sis = A.sistema;
+  bruto.sistema = sis ? { slug: sis.slug, papel: sis.papel,
+                          telas: Object.keys(sis.telas || {}) } : null;
+  if (!sis) { p3.mau('O central não devolveu o sistema "revista" para esta conta.'); }
+  else { p3.ok(`papel: ${sis.papel ?? '(nenhum)'} · telas: `
+             + (Object.keys(sis.telas || {}).join(', ') || 'nenhuma')); }
+
+  // A incógnita nº 1: o campo `papel` traz o SLUG ou o NOME do papel?
+  // A ponte compara com a string exata 'secretaria'. Vindo o nome, ninguém
+  // administra a revista — e o sintoma não diz isso.
+  const p4 = passo('O papel serve para administrar?', 'esperando');
+  const papel = String(sis?.papel ?? '');
+  if (A.perfil?.is_super_admin) {
+    p4.ok('Super admin do central — administra a revista independentemente do papel.');
+  } else if (papel.toLowerCase() === 'secretaria') {
+    p4.ok('Papel "secretaria": administra.');
+  } else if (papel) {
+    p4.mau(`O central devolveu "${papel}". A revista só dá administração para `
+         + `exatamente "secretaria" — com este valor, a pessoa entra como unidade.`);
+  } else {
+    p4.mau('O central não devolveu papel nenhum para este sistema.');
+  }
+
+  const p5 = passo('A ponte abre sessão na revista', 'esperando');
+  let sessao = null;
+  try {
+    const token = await A.token();
+    if (!token) throw new Error('não veio token do central.');
+    const t0 = performance.now();
+    const r = await fetch(CONFIG.SUPABASE_URL + '/functions/v1/central-bridge', {
+      method: 'POST',
+      headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + token,
+                 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    const resp = await r.json().catch(() => null);
+    bruto.ponte = { status: r.status, erro: resp?.erro ?? null, papel: resp?.papel ?? null,
+                    sincronizado: resp?.sincronizado ?? null,
+                    tem_token: !!resp?.access_token, ms: Math.round(performance.now() - t0) };
+    if (!r.ok || !resp?.access_token) {
+      p5.mau(`${r.status} · ${resp?.erro || 'sem detalhe'}`
+           + (resp?.detalhe ? ' · ' + String(resp.detalhe).slice(0, 160) : ''));
+    } else {
+      sessao = resp;
+      p5.ok(`sessão emitida em ${bruto.ponte.ms} ms`
+          + (resp.sincronizado ? ' · identidade sincronizada' : ' · ⚠ NÃO sincronizou'));
+    }
+  } catch (e) { p5.mau(e.message); }
+
+  const p6 = passo('O banco da revista reconhece a sessão', 'esperando');
+  if (!sessao) { p6.mau('Não houve sessão para testar.'); }
+  else {
+    try {
+      const SB = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      });
+      await SB.auth.setSession({ access_token: sessao.access_token,
+                                 refresh_token: sessao.refresh_token });
+      const u = await SB.auth.getUser();
+      const meu = await SB.from('usuarios')
+        .select('id, email, nome, perfil, unidade_id, ativo')
+        .eq('id', u.data.user.id).maybeSingle();
+      if (meu.error) throw new Error(meu.error.message);
+      if (!meu.data) {
+        p6.mau('A sessão vale, mas não há linha em `usuarios` — a ponte não sincronizou.');
+      } else {
+        bruto.perfil_revista = { perfil: meu.data.perfil, ativo: meu.data.ativo,
+                                 tem_unidade: !!meu.data.unidade_id };
+        p6.ok(`perfil no banco: ${meu.data.perfil}`
+            + (meu.data.ativo ? '' : ' · INATIVO')
+            + (meu.data.unidade_id ? ' · com unidade' : ' · sem unidade vinculada'));
+      }
+
+      const vinc = await SB.from('usuario_unidades').select('unidade_id');
+      const uni  = await SB.from('unidades').select('id, nome, escola_central_id');
+      bruto.vinculos = vinc.error ? ('erro: ' + vinc.error.message) : (vinc.data || []).length;
+      bruto.unidades = uni.error ? ('erro: ' + uni.error.message)
+                                 : { total: (uni.data || []).length,
+                                     sem_vinculo: (uni.data || []).filter((x) => !x.escola_central_id).length };
+      passo('Unidades cadastradas na revista',
+            uni.error ? 'mau' : 'ok',
+            uni.error ? uni.error.message
+              : `${(uni.data || []).length} unidade(s); `
+              + `${(uni.data || []).filter((x) => !x.escola_central_id).length} sem vínculo com o central`);
+    } catch (e) { p6.mau(e.message); }
+  }
+
+  // A incógnita nº 2: o RLS do central deixa ler o catálogo de escolas?
+  // É disso que depende o botão "Importar do central" do painel Admin.
+  const p7 = passo('Ler o catálogo de escolas do central', 'esperando');
+  try {
+    const SBc = window.ACESSO_SB;
+    if (!SBc) throw new Error('cliente do central indisponível.');
+    const r = await SBc.from('escolas').select('id, nome, ativo').order('nome');
+    if (r.error) throw new Error(r.error.message);
+    bruto.escolas_central = (r.data || []).length;
+    p7.ok(`${(r.data || []).length} escola(s) — a importação em massa funciona para esta conta.`);
+  } catch (e) {
+    bruto.escolas_central = 'erro: ' + e.message;
+    p7.mau(`${e.message} — não é avaria da revista: é permissão no central. `
+         + `O cadastro de unidades terá de ser feito uma a uma.`);
+  }
+
+  document.getElementById('bruto').textContent = JSON.stringify(bruto, null, 2);
+})();
+</script>
+</body>
+</html>

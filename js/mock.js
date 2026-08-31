@@ -13,9 +13,9 @@ const MockData = {
   },
 
   temas: [
-    { id: 't1', nome: 'Boas Práticas da Cozinha', descricao: 'Alimentação saudável e merenda nas escolas.', icone: '🍎', cor: '#C2603F', tag: 'Alimentação', status: 'ativo', ordem: 1, novo: true },
-    { id: 't2', nome: 'Leitura e Literatura', descricao: 'Projetos de incentivo à leitura.', icone: '📚', cor: '#8A6BA8', tag: 'Cultura', status: 'ativo', ordem: 2, novo: false },
-    { id: 't3', nome: 'Sustentabilidade', descricao: 'Hortas, reciclagem e meio ambiente.', icone: '🌱', cor: '#7A7D2A', tag: 'Meio Ambiente', status: 'ativo', ordem: 3, novo: false },
+    { id: 't1', nome: 'Boas Práticas da Cozinha', descricao: 'Alimentação saudável e merenda nas escolas.', icone: '🍎', cor: '#C2603F', tag: 'Alimentação', status: 'ativo', ordem: 1, criado_em: new Date().toISOString() },
+    { id: 't2', nome: 'Leitura e Literatura', descricao: 'Projetos de incentivo à leitura.', icone: '📚', cor: '#8A6BA8', tag: 'Cultura', status: 'ativo', ordem: 2, criado_em: '2026-01-15T00:00:00Z' },
+    { id: 't3', nome: 'Sustentabilidade', descricao: 'Hortas, reciclagem e meio ambiente.', icone: '🌱', cor: '#7A7D2A', tag: 'Meio Ambiente', status: 'ativo', ordem: 3, criado_em: '2026-02-20T00:00:00Z' },
   ],
 
   unidades: [
@@ -142,7 +142,8 @@ const MockApi = (() => {
       return { tema: clone(t), unidades };
     },
     criar: async (payload) => {
-      const novo = { id: _id('t'), status: 'ativo', ordem: MockData.temas.length + 1, novo: true, ...payload };
+      const novo = { id: _id('t'), status: 'ativo', ordem: MockData.temas.length + 1,
+                     criado_em: new Date().toISOString(), ...payload };
       MockData.temas.push(novo);
       return clone(novo);
     },
@@ -151,6 +152,7 @@ const MockApi = (() => {
   };
 
   const unidades = {
+    listar: async () => clone(MockData.unidades),
     criar: async (payload) => { const u = { id: _id('u'), status: 'ativo', ...payload }; MockData.unidades.push(u); return clone(u); },
     atualizar: async (id, payload) => { Object.assign(unidade(id), payload); return clone(unidade(id)); },
     setStatus: async (id, status) => { unidade(id).status = status; return clone(unidade(id)); },
@@ -220,12 +222,16 @@ const MockApi = (() => {
 
   const storage = {
     _basePath: (u, t, tipo) => `unidades/${u}/${t}/${tipo}`,
-    publicUrl: (path) => path,
+    // Mesmo contrato do storage real. Na demonstração o "caminho" já é uma URL
+    // (objectURL do arquivo escolhido), então assinar é devolver o que veio.
+    assinar: async (paths) => Object.fromEntries((paths || []).map((p) => [p, p])),
     listarArquivos: async () => [],
     uploadArquivo: async (_u, _t, _tipo, file) => {
-      // gera uma URL local temporária só para preview
+      // Na demonstração o "caminho" É a URL local do arquivo escolhido: assim o
+      // renderer a reconhece como endereço externo e mostra a foto na hora.
+      // Devolver o nome do arquivo aqui deixaria a galeria vazia na demo.
       const url = (window.URL || window.webkitURL).createObjectURL(file);
-      return { path: file.name, url };
+      return { path: url, url };
     },
   };
 

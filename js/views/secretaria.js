@@ -50,11 +50,24 @@ const SecretariaView = (() => {
     </div>`;
   }
 
+  // O selo "Novo" sai de `criado_em`, não de uma coluna `novo`.
+  //
+  // ⚠️ Uma coluna booleana aqui nunca deixaria de ser verdade: o tema nasceria
+  // "novo" e continuaria novo para sempre, porque ninguém volta para desmarcar.
+  // Derivado da data, o selo expira sozinho. (A tabela `temas` também não tem
+  // essa coluna — mandá-la no insert fazia o cadastro falhar em produção.)
+  const DIAS_NOVO = 14;
+  function _ehNovo(t) {
+    if (!t || !t.criado_em) return false;
+    const idade = Date.now() - new Date(t.criado_em).getTime();
+    return Number.isFinite(idade) && idade >= 0 && idade < DIAS_NOVO * 864e5;
+  }
+
   function _temaCard(t) {
     const cor = t.cor || '#C2603F';
     const params = encodeURIComponent(JSON.stringify({ temaId: t.id, temaNome: t.nome }));
     return `<div class="tema-card" onclick="Router.navigate('tema', JSON.parse(decodeURIComponent('${params}')))">
-      ${t.novo ? `<span class="tema-badge-novo">Novo</span>` : ''}
+      ${_ehNovo(t) ? `<span class="tema-badge-novo">Novo</span>` : ''}
       <div class="tema-icon" style="background:${cor}18;color:${cor}">${t.icone || '🎯'}</div>
       <h3 class="tema-nome">${UI._esc(t.nome)}</h3>
       <p class="tema-desc">${UI._esc(t.descricao || '')}</p>
@@ -103,7 +116,6 @@ const SecretariaView = (() => {
       icone: document.getElementById('nt-icone').value.trim() || '🎯',
       tag:   document.getElementById('nt-tag').value.trim(),
       cor:   document.getElementById('nt-cor').value,
-      novo:  true,
     };
     try {
       await Api.temas.criar(payload);
