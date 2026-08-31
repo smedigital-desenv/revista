@@ -66,6 +66,10 @@ quem está diagnosticando.
 - **`paginas.inscricao_id` não é decorativo** — a listagem do tema passa por
   dentro de `inscricoes`, e página sem ele some da tela sem erro. Um trigger o
   preenche; não o remova.
+- **O papel que o central manda não tem formato único.** Medido: `admin` para a
+  ponte e `super_admin` para o navegador, na mesma pessoa. Quem administra a
+  revista é decidido por `is_super_admin` **ou** papel `like 'secretaria%'` —
+  ver "Quem é secretaria" em `docs/BANCO.md` antes de mexer nessa regra.
 - **Unidade sem `escola_central_id` não alcança ninguém.** O vínculo pessoa ×
   unidade é casado por esse id (e, como reserva, por nome exatamente igual). O
   sintoma de um id faltando é uma escola que ninguém consegue editar, sem erro
